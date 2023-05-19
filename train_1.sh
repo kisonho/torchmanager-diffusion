@@ -1,0 +1,1 @@
+python train.py cifar10 ~/Public/share/Data/Cifar10 ~/Documents/Models/diffusion/cifar10_sigmoid_2.pth -b 128 -e 400 -beta sigmoid --beta_range 0.001 0.029 -exp cifar10_sigmoid_2.exp --replace_experiment --show_verbose --device cuda:1
