@@ -3,8 +3,8 @@ from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise
 from torchmanager_core.typing import Optional, Union
 
-from ..scheduling import BetaScheduler
-from ..version import CURRENT as VERSION
+from diffusion.scheduling import BetaScheduler
+from diffusion.version import DESCRIPTION
 
 
 class Configs(_Configs):
@@ -13,7 +13,7 @@ class Configs(_Configs):
     beta_range: Optional[list[float]]
     beta_scheduler: BetaScheduler
     data_dir: str
-    dataset: str
+    dataset: Optional[str]
     device: torch.device
     epochs: int
     output_model: str
@@ -50,19 +50,19 @@ class Configs(_Configs):
     @staticmethod
     def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
         # experiment arguments
-        parser.add_argument("dataset", type=str, help="The target type of dataset.")
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
         parser.add_argument("output_model", type=str, help="The path for the final PyTorch model.")
 
         # training arguments
         training_args = parser.add_argument_group("Training Arguments")
+        training_args.add_argument("-d", "--dataset", type=str, default=None, help="The target type of dataset.")
         training_args.add_argument("-b", "--batch_size", type=int, default=64, help="The batch size, default is 64.")
         training_args.add_argument("-e", "--epochs", type=int, default=100, help="The training epochs, default is 100.")
         training_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
 
         # diffusion arguments
         diffusion_args = parser.add_argument_group("DDPM Arguments")
-        diffusion_args.add_argument("-beta", "--beta_scheduler", type=str, default="harmonic", help="The beta scheduler for diffusion model, default is 'harmonic'.")
+        diffusion_args.add_argument("-beta", "--beta_scheduler", type=str, default="linear", help="The beta scheduler for diffusion model, default is 'linear'.")
         diffusion_args.add_argument("--beta_range", type=float, default=None, nargs=2, help="The range of mid-linear scheduler, default is `None`.")
         diffusion_args.add_argument("-t", "--time_steps", type=int, default=1000, help="The total time steps of diffusion model, default is 1000.")
         diffusion_args = _Configs.get_arguments(training_args)
@@ -73,8 +73,9 @@ class Configs(_Configs):
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
-    def show_environments(self) -> None:
-        view.logger.info(f"diffusion={VERSION}, torch={torch.__version__}, torchmanager={torchmanager.version}")
+    def show_environments(self, description: str = DESCRIPTION) -> None:
+        super().show_environments(description)
+        view.logger.info(f"torchmanager={torchmanager.version}")
 
     def show_settings(self) -> None:
         view.logger.info(f"Dataset {self.dataset}: {self.data_dir}")

@@ -1,5 +1,5 @@
 from torchmanager import losses, metrics
-from torchmanager_core import abc, torch
+from torchmanager_core import torch
 from torchmanager_core.typing import Generic, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
@@ -24,7 +24,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         self.is_continous = is_continous
         self.sde = sde
 
-    def forward(self, x_train: DiffusionData) -> torch.Tensor:
+    def forward(self, x_train: DiffusionData, y_train: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         # Scale neural network output by standard deviation and flip sign
         # For VE-trained models, t=0 corresponds to the highest noise level
         if isinstance(self.sde, SubVPSDE) or (self.is_continous and isinstance(self.sde, VPSDE)):
@@ -45,11 +45,15 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             raise NotImplementedError(f"SDE class {type(self.sde)} not yet supported.")
 
         # calculate using score function
-        x = DiffusionData(x_train.x, t)
+        x = DiffusionData(x_train.x, t, condition=x_train.condition)
         score = self.model(x)
-        return score / std
+        y = score / std
 
-    def forward_diffusion(self, data: torch.Tensor) -> tuple[DiffusionData, torch.Tensor]:
+        # calculate loss
+        loss = self.compiled_losses(y, y_train) if self.loss_fn is not None and y_train is not None else None
+        return y, loss
+
+    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
         t = self.beta_space.sample(data.shape[0], self.time_steps)
         z = torch.randn_like(data, device=t.device)
         mean, std = self.sde.marginal_prob(data, t)
@@ -57,7 +61,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         noise = z / std[:, None, None, None]
         return DiffusionData(x, t), noise
 
-    def reverse_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE

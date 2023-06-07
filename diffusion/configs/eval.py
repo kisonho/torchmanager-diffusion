@@ -15,7 +15,7 @@ class Configs(_Configs):
     dataset: str
     device: torch.device
     image_size: int
-    model: Optional[str]
+    model: str
     show_verbose: bool
     time_steps: Optional[int]
     use_multi_gpus: bool
@@ -25,7 +25,7 @@ class Configs(_Configs):
         super().format_arguments()
         self.data_dir = os.path.normpath(self.data_dir)
         self.device = torch.device(self.device)
-        self.model = os.path.normpath(self.model) if self.model is not None else None
+        self.model = os.path.normpath(self.model)
 
         # assert formats
         assert self.batch_size > 0, _raise(ValueError(f"Batch size must be a positive number, got {self.batch_size}."))
@@ -43,14 +43,14 @@ class Configs(_Configs):
     @staticmethod
     def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
         # experiment arguments
-        parser.add_argument("dataset", type=str, help="The target type of dataset.")
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
+        parser.add_argument("model", type=str, help="The path for a pre-trained PyTorch model, default is `None`.")
 
         # training arguments
         testing_args = parser.add_argument_group("Testing Arguments")
-        testing_args.add_argument("-b", "--batch_size", type=int, default=64, help="The batch size, default is 64.")
+        testing_args.add_argument("-b", "--batch_size", type=int, default=1, help="The batch size, default is 1.")
         testing_args.add_argument("-beta", "--beta_scheduler", type=str, default=None, help="The beta scheduler for diffusion model, default is 'None' (Checkpoint is needed).")
-        testing_args.add_argument("-m", "--model", type=str, default=None, help="The path for a pre-trained PyTorch model, default is `None`.")
+        testing_args.add_argument("--dataset", type=str, default=None, help="The target type of dataset.")
         testing_args.add_argument("-size", "--image_size", type=int, default=32, help="The image size to generate, default is 32.")
         testing_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
         testing_args.add_argument("-t", "--time_steps", type=int, default=None, help="The total time steps of diffusion model, default is `None` (Checkpoint is needed).")

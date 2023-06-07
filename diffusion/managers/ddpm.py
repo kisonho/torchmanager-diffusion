@@ -1,5 +1,7 @@
 from torchmanager_core import devices, errors, torch, view, _raise
-from torchmanager_core.typing import TypeVar
+from torchmanager_core.typing import Any, TypeVar
+
+from diffusion.data import DiffusionData
 
 from ..data import DiffusionData
 from ..nn import DiffusionModule
@@ -12,7 +14,7 @@ Module = TypeVar("Module", bound=DiffusionModule)
 class DDPMManager(DiffusionManager[Module]):
     """Main DDPM Manager"""
 
-    def forward_diffusion(self, data: torch.Tensor) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, **kwargs: Any) -> tuple[DiffusionData, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -32,7 +34,7 @@ class DDPMManager(DiffusionManager[Module]):
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
         return DiffusionData(x, t), noise
 
-    def reverse_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
         # initialize betas by given t
         betas_t = _get_index_from_list(self.betas, data.t, data.x.shape)
         sqrt_one_minus_alphas_cumprod_t = _get_index_from_list(self.beta_space.sqrt_one_minus_alphas_cumprod, data.t, data.x.shape)

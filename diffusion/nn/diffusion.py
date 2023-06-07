@@ -12,12 +12,20 @@ class DiffusionModule(torch.nn.Module, abc.ABC):
     * Abstract class
 
     - method to implement:
-        - forward: The forward method that accepts inputs perform to `.protocols.TimedData`
+        - unpack_data: The method that accepts inputs perform to `.protocols.TimedData` to unpack the given inputs and passed to `forward` method
     """
 
     def __call__(self, x_in: TimedData, *args: Any, **kwargs: Any) -> torch.Tensor:
-        return super().__call__(x_in, *args, **kwargs)
+        data = self.unpack_data(x_in)
+        return super().__call__(*data, *args, **kwargs)
 
     @abc.abstractmethod
-    def forward(self, x_in: TimedData, *args: Any, **kwargs: Any) -> torch.Tensor:
+    def unpack_data(self, x_in: TimedData) -> tuple[Any, ...]:
+        """
+        Method to unpack `TimedData`
+
+        - Parameters:
+            x_in: The `TimedData` to unpack
+        - Returns: A `tuple` of returned unpacked data
+        """
         return NotImplemented
