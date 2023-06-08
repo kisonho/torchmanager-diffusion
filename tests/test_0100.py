@@ -47,7 +47,7 @@ class Case0100(unittest.TestCase):
 
         try:
             from packaging.version import Version # type: ignore
-            self.assertGreaterEqual(Version(diffusion.VERSION), Version("v0.1a"))
+            self.assertGreaterEqual(diffusion.VERSION, Version("v0.1a"))
         except ImportError:
             pass
 
