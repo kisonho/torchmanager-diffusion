@@ -190,7 +190,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
                 # sampling
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
-                noises = torch.randn_like(y_test, device=y_test.device)
+                noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
                 x = self.sampling(int(x_test.shape[0]), noises=noises, condition=x_test, show_verbose=False)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, device)
