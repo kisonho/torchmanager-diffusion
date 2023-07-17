@@ -1,2 +1,2 @@
-from .loader import load_unet, load_unet_small
+from .builder import build_unet, build_unet_small
 from .unet import Unet

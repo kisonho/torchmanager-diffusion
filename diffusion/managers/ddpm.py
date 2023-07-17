@@ -1,4 +1,4 @@
-from torchmanager_core import devices, errors, torch, view, _raise
+from torchmanager_core import torch
 from torchmanager_core.typing import Any, TypeVar
 
 from diffusion.data import DiffusionData
@@ -42,7 +42,7 @@ class DDPMManager(DiffusionManager[Module]):
 
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean
-        y = self.forward(data)
+        y, _ = self.forward(data)
         y = sqrt_recip_alphas_t * (data.x - betas_t * y / sqrt_one_minus_alphas_cumprod_t)
         if i > 0:
             posterior_variance_t = _get_index_from_list(self.beta_space.posterior_variance, data.t, data.x.shape)

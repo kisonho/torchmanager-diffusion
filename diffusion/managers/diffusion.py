@@ -3,8 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Dict, Iterable, Optional, Tuple, Union, TypeVar
-from torchvision.transforms import Resize
+from torchmanager_core.typing import Any, Iterable, Optional, Union, TypeVar
 
 from ..data import DiffusionData
 from ..nn import DiffusionModule
@@ -191,7 +190,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
                 # sampling
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
-                noises = torch.randn_like(y_test, device=y_test.device)
+                noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
                 x = self.sampling(int(x_test.shape[0]), noises=noises, condition=x_test, show_verbose=False)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, device)
@@ -255,6 +254,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         x_train, noise = self.forward_diffusion(y_train, condition=x_train)
         return super().train_step(x_train, noise)
 
-    def test_step(self, x_test: Any, y_test: Any) -> Dict[str, float]:
+    def test_step(self, x_test: Any, y_test: Any) -> dict[str, float]:
         x_test, noise = self.forward_diffusion(y_test, condition=x_test)
         return super().test_step(x_test, noise)

@@ -4,9 +4,9 @@ from torchmanager_core.typing import Type
 from .unet import Unet
 
 
-def load_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1) -> Unet:
+def build_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1) -> Unet:
     """
-    Load the UNET with given input channels
+    Build the UNET with given input channels
 
     - Parameters:
         - in_channels: An `int` of input image channels
@@ -21,9 +21,9 @@ def load_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv
     return model
 
 
-def load_unet_small(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 4, 8), dropout: float = 0.1) -> Unet:
+def build_unet_small(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 4, 8), dropout: float = 0.1) -> Unet:
     """
-    Load the UNET implemented in hugging face with given input channels
+    Build the UNET implemented in hugging face with given input channels
 
     - Parameters:
         - in_channels: An `int` of input image channels
