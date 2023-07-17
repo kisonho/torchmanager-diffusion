@@ -18,7 +18,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
     training_dataset, validation_dataset, in_channels, _ = data.Datasets(configs.dataset).load(configs.data_dir, configs.batch_size, device=configs.device)
 
     # load model
-    model = diffusion.networks.load_unet(in_channels)
+    model = diffusion.networks.build_unet(in_channels)
 
     # load optimizer, loss, and metrics
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
@@ -26,10 +26,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
 
     # calculate betas
     T = configs.time_steps
-    if configs.beta_range is not None and configs.beta_scheduler == diffusion.scheduling.BetaScheduler.PEAK_LINEAR:
-        beta_lower, beta_peak = configs.beta_range
-        beta_space = diffusion.scheduling.peak_linear_schedule(T, beta_lower=beta_lower, beta_peak=beta_peak)
-    elif configs.beta_range is not None:
+    if configs.beta_range is not None:
         beta_start, beta_end = configs.beta_range
         beta_space = configs.beta_scheduler.calculate_space_with_range(T, beta_start=beta_start, beta_end=beta_end)
     else:
@@ -52,4 +49,5 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
 
 if __name__ == "__main__":
     configs = TrainingConfigs.from_arguments()
+    assert isinstance(configs, TrainingConfigs), "The configs fetched from arguments is not a valid `TrainingConfigs`"
     train(configs)

@@ -65,5 +65,6 @@ def eval(configs: TestingConfigs, /, model: Optional[torch.nn.Module] = None) ->
 
 if __name__ == "__main__":
     configs = TestingConfigs.from_arguments()
+    assert isinstance(configs, TestingConfigs)
     result = eval(configs)
     view.logger.info(result)

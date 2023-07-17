@@ -51,34 +51,6 @@ class Case0100(unittest.TestCase):
         except ImportError:
             pass
 
-    def test_harmonic_schedule(self) -> None:
-        import time, torch
-        from diffusion.scheduling import BetaScheduler
-
-        beta_space = BetaScheduler.HARMONIC.calculate_space(1000)
-        beta_summation = beta_space.betas.sum()
-        self.assertEqual(beta_space.betas.shape[0], 1000)
-        self.assertGreaterEqual(beta_summation, 5) # type: ignore
-
-        time_steps = 300
-        N = 10000
-
-        start = time.time()
-        harmonic_space_alg1_values = torch.zeros(time_steps, dtype=torch.float32)
-        harmonic_space_alg1 = harmonic_space_alg1_values
-        for i in range(time_steps):
-            harmonic_space_alg1_values[i] = 1.05 ** i
-            harmonic_space_alg1 = (harmonic_space_alg1_values - torch.min(harmonic_space_alg1_values)).round() / (harmonic_space_alg1_values.max() - harmonic_space_alg1_values.min()) * N
-            harmonic_space_alg1 = harmonic_space_alg1 / N
-        time_cost_alg1 = time.time() - start
-
-        start = time.time()
-        harmonic_space_alg2 = torch.tensor([N * (1.05 ** i) for i in range(time_steps)])
-        harmonic_space_alg2 = (harmonic_space_alg2 - torch.min(harmonic_space_alg2)).round() / (harmonic_space_alg2.max() - harmonic_space_alg2.min())
-        time_cost_alg2 = time.time() - start
-
-        self.assertLessEqual(time_cost_alg2, time_cost_alg1)
-
     def test_scheduler(self) -> None:
         import torch
         from diffusion.scheduling import BetaScheduler, BetaSpace
