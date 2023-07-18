@@ -1,6 +1,6 @@
 from torch.nn import functional as F
 from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple, Self
+from torchmanager_core.typing import Collection, NamedTuple, Self
 
 
 class BetaSpace(NamedTuple):
@@ -63,6 +63,12 @@ class BetaSpace(NamedTuple):
     def __repr__(self) -> str:
         return f"<BetaSpace {self.shape}>:\n \
                 beta={self.betas}"
+    
+    def betas_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.betas, t, shape)
+
+    def posterior_variance_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.posterior_variance, t, shape)
 
     def sample(self, batch_size: int, time_steps: int) -> torch.Tensor:
         """
@@ -75,5 +81,24 @@ class BetaSpace(NamedTuple):
         """
         return torch.randint(0, time_steps, (batch_size,), device=self.device).long()
     
+    def sqrt_alphas_cumprod_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_alphas_cumprod, t, shape)
+    
+    def sqrt_one_minus_alphas_cumprod_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_one_minus_alphas_cumprod, t, shape)
+    
+    def sqrt_recip_alphas_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_recip_alphas, t, shape)
+
     def to(self, device: torch.device) -> Self:
         return BetaSpace(self.betas.to(device))
+
+
+def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Size) -> torch.Tensor:
+    """
+    Returns a specific index t of a passed list of values vals
+    while considering the batch dimension.
+    """
+    batch_size = t.shape[0]
+    vals = vals.gather(-1, t)
+    return vals.reshape(batch_size, *((1,) * (len(x_shape) - 1)))

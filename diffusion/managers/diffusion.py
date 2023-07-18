@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Optional, Union, TypeVar
+from torchmanager_core.typing import Any, Iterable, Optional, Tuple, Union, TypeVar
 
 from ..data import DiffusionData
 from ..nn import DiffusionModule
@@ -31,14 +31,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     beta_space: BetaSpace
     time_steps: int
 
-    @property
-    def alphas(self) -> torch.Tensor:
-        return self.beta_space.alphas
-
-    @property
-    def betas(self) -> torch.Tensor:
-        return self.beta_space.betas
-
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
@@ -60,6 +52,9 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         super().backward(loss)
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
         self.compiled_optimizer.step()
+
+    def forward(self, x_train: Any, y_test: Any | None = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        return super().forward(x_train, y_test)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:

@@ -9,7 +9,6 @@ from ..nn import DiffusionModule
 from ..scheduling import BetaSpace
 from ..sde import SDE, SubVPSDE, VESDE, VPSDE
 from .diffusion import DiffusionManager
-from .utils import _get_index_from_list
 
 Module = TypeVar("Module", bound=DiffusionModule)
 SDEType = TypeVar("SDEType", bound=SDE)
@@ -76,7 +75,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         elif isinstance(self.sde, VPSDE):
             # The ancestral sampling predictor for VESDE
             timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
-            beta = _get_index_from_list(self.betas, timestep, data.x.shape)
+            beta = self.beta_space.betas_t(timestep, data.x.shape)
             score = self.forward(data)
             x_mean = (data.x + beta[:, None, None, None] * score) / torch.sqrt(1. - beta)[:, None, None, None]
             noise = torch.randn_like(data.x)

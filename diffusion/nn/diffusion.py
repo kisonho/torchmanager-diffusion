@@ -15,7 +15,7 @@ class DiffusionModule(torch.nn.Module, abc.ABC):
         - unpack_data: The method that accepts inputs perform to `.protocols.TimedData` to unpack the given inputs and passed to `forward` method
     """
 
-    def __call__(self, x_in: TimedData, *args: Any, **kwargs: Any) -> torch.Tensor:
+    def __call__(self, x_in: TimedData, *args: Any, **kwargs: Any) -> Any:
         data = self.unpack_data(x_in)
         return super().__call__(*data, *args, **kwargs)
 

@@ -6,7 +6,7 @@ class DiffusionData:
     """
     The data for diffusion model
 
-    * implements: `networks.protocols.TimedData`, `torchmanager_core.devices.DeviceMovable`
+    * implements: `nn.protocols.TimedData`, `torchmanager_core.devices.DeviceMovable`
 
     - Properties:
         - x: A `torch.Tensor` of the main data
