@@ -3,11 +3,9 @@ from torchmanager_core import torch
 from torchmanager_core.typing import Generic, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
-
-from ..data import DiffusionData
-from ..nn import DiffusionModule
-from ..scheduling import BetaSpace
-from ..sde import SDE, SubVPSDE, VESDE, VPSDE
+from diffusion.nn import DiffusionModule
+from diffusion.scheduling import BetaSpace
+from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
 from .diffusion import DiffusionManager
 
 Module = TypeVar("Module", bound=DiffusionModule)

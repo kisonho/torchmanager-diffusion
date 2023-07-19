@@ -2,9 +2,7 @@ from torchmanager_core import torch
 from torchmanager_core.typing import Any, TypeVar
 
 from diffusion.data import DiffusionData
-
-from ..data import DiffusionData
-from ..nn import DiffusionModule
+from diffusion.nn import DiffusionModule
 from .diffusion import DiffusionManager
 
 Module = TypeVar("Module", bound=DiffusionModule)

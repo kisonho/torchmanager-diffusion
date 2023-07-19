@@ -5,9 +5,9 @@ from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Iterable, Optional, Tuple, Union, TypeVar
 
-from ..data import DiffusionData
-from ..nn import DiffusionModule
-from ..scheduling import BetaSpace
+from diffusion.data import DiffusionData
+from diffusion.nn import DiffusionModule
+from diffusion.scheduling import BetaSpace
 
 Module = TypeVar("Module", bound=DiffusionModule)
 
