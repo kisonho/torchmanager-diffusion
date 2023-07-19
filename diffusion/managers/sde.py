@@ -73,7 +73,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         elif isinstance(self.sde, VPSDE):
             # The ancestral sampling predictor for VESDE
             timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
-            beta = self.beta_space.betas_t(timestep, data.x.shape)
+            beta = self.beta_space.sample_betas(timestep, data.x.shape)
             score = self.forward(data)
             x_mean = (data.x + beta[:, None, None, None] * score) / torch.sqrt(1. - beta)[:, None, None, None]
             noise = torch.randn_like(data.x)

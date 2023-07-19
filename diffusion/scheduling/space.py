@@ -64,11 +64,20 @@ class BetaSpace(NamedTuple):
         return f"<BetaSpace {self.shape}>:\n \
                 beta={self.betas}"
     
-    def betas_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+    def sample_betas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.betas, t, shape)
 
-    def posterior_variance_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+    def sample_posterior_variance(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.posterior_variance, t, shape)
+
+    def sample_sqrt_alphas_cumprod(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_alphas_cumprod, t, shape)
+
+    def sample_sqrt_one_minus_alphas_cumprod(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_one_minus_alphas_cumprod, t, shape)
+
+    def sample_sqrt_recip_alphas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.sqrt_recip_alphas, t, shape)
 
     def sample(self, batch_size: int, time_steps: int) -> torch.Tensor:
         """
@@ -80,15 +89,6 @@ class BetaSpace(NamedTuple):
         - Returns: A random sampled `torch.Tensor` for t
         """
         return torch.randint(0, time_steps, (batch_size,), device=self.device).long()
-    
-    def sqrt_alphas_cumprod_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
-        return _get_index_from_list(self.sqrt_alphas_cumprod, t, shape)
-    
-    def sqrt_one_minus_alphas_cumprod_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
-        return _get_index_from_list(self.sqrt_one_minus_alphas_cumprod, t, shape)
-    
-    def sqrt_recip_alphas_t(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
-        return _get_index_from_list(self.sqrt_recip_alphas, t, shape)
 
     def to(self, device: torch.device) -> Self:
         return BetaSpace(self.betas.to(device))
