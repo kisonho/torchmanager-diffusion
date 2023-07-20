@@ -53,7 +53,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
         self.compiled_optimizer.step()
 
-    def forward(self, x_train: Any, y_test: Any | None = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    def forward(self, x_train: Any, y_test: Optional[Any] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         return super().forward(x_train, y_test)
 
     @abc.abstractmethod
