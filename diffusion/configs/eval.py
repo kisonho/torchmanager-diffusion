@@ -1,7 +1,7 @@
 import argparse
 import torchmanager
 from torchmanager.configs import Configs as _Configs
-from torchmanager_core import argparse, os, torch, view, _raise
+from torchmanager_core import DESCRIPTION, argparse, os, torch, view, _raise
 from torchmanager_core.typing import Optional, Union
 
 from ..version import CURRENT as VERSION
@@ -61,9 +61,10 @@ class Configs(_Configs):
         device_args.add_argument("--device", type=str, default="cuda", help="The target device to run for the experiment.")
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
-
-    def show_environments(self) -> None:
-        view.logger.info(f"diffusion={VERSION}, torch={torch.__version__}, torchmanager={torchmanager.version}")
+    
+    def show_environments(self, description: str = ...) -> None:
+        super().show_environments(description)
+        view.logger.info(f"torchmanager={torchmanager.version}")
 
     def show_settings(self) -> None:
         view.logger.info(f"Dataset {self.dataset}: {self.data_dir}")
