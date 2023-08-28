@@ -9,7 +9,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-torchmanager = "^1.2"
+torchmanager = "^1.2rc5"
 
 [build-system]
 requires = ["poetry-core"]
