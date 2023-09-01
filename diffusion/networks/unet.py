@@ -63,7 +63,7 @@ class Unet(DiffusionModule):
                         block_type(dim_in, dim_out, conv_type=Conv2d, dropout=dropout, time_emb_dim=time_dim),
                         block_type(dim_out, dim_out, conv_type=Conv2d, dropout=dropout, time_emb_dim=time_dim),
                         Residual(PreNorm(dim_out, LinearAttention(dim_out))),
-                        Conv2d(dim_out, dim_out, 4, 2, 1) if not is_last else torch.nn.Identity(),
+                        Conv2d(dim_out, dim_out, 3, 2, 1) if not is_last else torch.nn.Identity(),
                     ]
                 )
             )
@@ -79,7 +79,7 @@ class Unet(DiffusionModule):
                         block_type(dim_out * 2, dim_in, conv_type=Conv2d, dropout=dropout, time_emb_dim=time_dim),
                         block_type(dim_in, dim_in, conv_type=Conv2d, dropout=dropout, time_emb_dim=time_dim),
                         Residual(PreNorm(dim_in, LinearAttention(dim_in))),
-                        torch.nn.ConvTranspose2d(dim_in, dim_in, 4, 2, 1) if not is_last else torch.nn.Identity(),
+                        torch.nn.ConvTranspose2d(dim_in, dim_in, 3, 2, 1) if not is_last else torch.nn.Identity(),
                     ]
                 )
             )
