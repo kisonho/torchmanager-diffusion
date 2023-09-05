@@ -2,7 +2,7 @@ import torch
 from functools import partial
 from typing import Optional, Type
 
-from diffusion.nn import Attention, ConvNextBlock, ConditionalDiffusionModule, DiffusionModule, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings
+from diffusion.nn import Attention, ConvNextBlock, DiffusionModule, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings
 from diffusion.nn.protocols import TimedData
 
 
@@ -119,24 +119,3 @@ class Unet(DiffusionModule):
             x = attn(x)
             x = upsample(x)
         return self.final_conv(x)
-
-
-class ConditionalUnet(Unet, ConditionalDiffusionModule):
-    image_specific_encoder: Optional[torch.nn.Module]
-    mask_specific_encoder: Optional[torch.nn.Module]
-
-    def __init__(self, dim: int, /, image_specific_encoder: Optional[torch.nn.Module] = None, mask_specific_encoder: Optional[torch.nn.Module] = None, *, init_dim: Optional[int] = None, out_dim: Optional[int] = None, dropout: float = 0, dim_mults: tuple[int, ...] = ..., channels: int = 3, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, with_time_emb: bool = True, resnet_block_groups: int = 8, use_convnext: bool = False, convnext_mult: int = 2) -> None:
-        Unet.__init__(self, dim, init_dim, out_dim, dropout, dim_mults, channels, conv_type, with_time_emb, resnet_block_groups, use_convnext, convnext_mult)
-        self.image_specific_encoder = image_specific_encoder
-        self.mask_specific_encoder = mask_specific_encoder
-
-    def unpack_data(self, x_in: TimedData) -> tuple[torch.Tensor, ...]:
-        return ConditionalDiffusionModule.unpack_data(self, x_in)
-
-    def forward(self, x: torch.Tensor, time: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        if self.image_specific_encoder is not None:
-            condition = self.image_specific_encoder(condition)
-        if self.mask_specific_encoder is not None:
-            x = self.mask_specific_encoder(x)
-        conditioned_x = torch.cat([x, condition], dim=1)
-        return Unet.forward(self, conditioned_x, time)
