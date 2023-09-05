@@ -2,8 +2,6 @@ import torch
 from functools import partial
 from typing import Optional, Type
 
-from torchmanager_core.typing import Any
-
 from diffusion.nn import Attention, ConvNextBlock, DiffusionModule, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings
 from diffusion.nn.protocols import TimedData
 
