@@ -29,14 +29,3 @@ class DiffusionModule(torch.nn.Module, abc.ABC):
         - Returns: A `tuple` of returned unpacked data
         """
         return NotImplemented
-
-
-class ConditionalDiffusionModule(DiffusionModule):
-    """
-    The basic diffusion model
-
-    * extends: `diffusion.DiffusionModule`
-    """
-    def unpack_data(self, x_in: TimedData) -> tuple[torch.Tensor, ...]:
-        assert x_in.condition is not None, "The condition must be given."
-        return x_in.x, x_in.t, x_in.condition
