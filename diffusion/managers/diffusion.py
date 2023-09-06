@@ -122,29 +122,22 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         imgs = noises
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
 
-        # move model
-        try:
-            # sampling loop time step
-            for i in reversed(range(0, self.time_steps)):
-                # fetch data
-                t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
+        # sampling loop time step
+        for i in reversed(range(0, self.time_steps)):
+            # fetch data
+            t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
 
-                # append to predicitions
-                x = DiffusionData(imgs, t, condition=condition)
-                y = self.sampling_step(x, i)
-                imgs = y.to(imgs.device)
+            # append to predicitions
+            x = DiffusionData(imgs, t, condition=condition)
+            y = self.sampling_step(x, i)
+            imgs = y.to(imgs.device)
 
-                # update progress bar
-                if progress_bar is not None:
-                    progress_bar.update()
+            # update progress bar
+            if progress_bar is not None:
+                progress_bar.update()
 
-            # reset model and loss
-            return [img for img in imgs]
-        except KeyboardInterrupt:
-            view.logger.info("Prediction interrupted.")
-            return [img for img in imgs]
-        except:
-            raise
+        # reset model and loss
+        return [img for img in imgs]
 
     @torch.no_grad()
     def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, *, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> dict[str, float]:
