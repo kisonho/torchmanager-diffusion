@@ -1,10 +1,10 @@
 import argparse
 import torchmanager
 from torchmanager.configs import Configs as _Configs
-from torchmanager_core import DESCRIPTION, argparse, os, torch, view, _raise
+from torchmanager_core import argparse, os, torch, view, _raise
 from torchmanager_core.typing import Optional, Union
 
-from ..version import CURRENT as VERSION
+from ..version import DESCRIPTION
 
 
 class Configs(_Configs):
@@ -62,7 +62,7 @@ class Configs(_Configs):
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
     
-    def show_environments(self, description: str = ...) -> None:
+    def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"torchmanager={torchmanager.version}")
 
