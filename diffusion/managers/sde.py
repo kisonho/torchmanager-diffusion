@@ -13,15 +13,19 @@ SDEType = TypeVar("SDEType", bound=SDE)
 
 
 class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
-    beta_space: BetaSpace
+    beta_space: Optional[BetaSpace]
     is_continous: bool
     sde: SDEType
 
-    def __init__(self, model: Module, /, beta_space: BetaSpace, sde: SDEType, time_steps: int, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = ...) -> None:
+    def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = ...) -> None:
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
         self.is_continous = is_continous
         self.sde = sde
+
+        # check parameters
+        if isinstance(self.sde, VPSDE) and self.beta_space is None:
+            raise ValueError("Beta space is required for VPSDE.")
 
     def forward(self, x_train: DiffusionData, y_train: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         # Scale neural network output by standard deviation and flip sign
@@ -30,6 +34,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             t = x_train.t * 999
             _, std = self.sde.marginal_prob(torch.zeros_like(x_train.x), x_train.t)
         elif isinstance(self.sde, VPSDE):
+            assert self.beta_space is not None, "Beta space is required for VPSDE."
             t = x_train.t * (self.sde.N - 1)
             std = self.beta_space.sqrt_one_minus_alphas_cumprod
         elif self.is_continous and isinstance(self.sde, VESDE):
@@ -53,12 +58,17 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         return y, loss
 
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
-        t = self.beta_space.sample(data.shape[0], self.time_steps)
+        t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long()
         z = torch.randn_like(data, device=t.device)
         mean, std = self.sde.marginal_prob(data, t)
         x = mean + std[:, None, None, None] * z
         noise = z / std[:, None, None, None]
         return DiffusionData(x, t), noise
+
+    def to(self, device: torch.device) -> None:
+        if self.beta_space is not None:
+            self.beta_space = self.beta_space.to(device)
+        return super().to(device)
 
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
         # predict
@@ -74,6 +84,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             y = x_mean + std[:, None, None, None] * noise
         elif isinstance(self.sde, VPSDE):
             # The ancestral sampling predictor for VESDE
+            assert self.beta_space is not None, "Beta space is required for VPSDE."
             timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
             beta = self.beta_space.sample_betas(timestep, data.x.shape)
             score = self.forward(data)

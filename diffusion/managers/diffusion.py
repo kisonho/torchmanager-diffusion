@@ -230,7 +230,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
     def to(self, device: torch.device) -> None:
         super().to(device)
-        self.beta_space = self.beta_space.to(device)
 
     def train_step(self, x_train: Any, y_train: torch.Tensor) -> dict[str, float]:
         x_train, noise = self.forward_diffusion(y_train, condition=x_train)

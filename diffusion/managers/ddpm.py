@@ -42,6 +42,10 @@ class DDPMManager(DiffusionManager[Module]):
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(t, x_start.shape)
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
         return DiffusionData(x, t), noise
+    
+    def to(self, device: torch.device) -> None:
+        self.beta_space = self.beta_space.to(device)
+        return super().to(device)
 
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
         # initialize betas by given t

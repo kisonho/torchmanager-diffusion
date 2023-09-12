@@ -4,7 +4,22 @@ from typing import Collection
 
 
 class SDE(abc.ABC):
-    """SDE abstract class. Functions are designed for a mini-batch of inputs."""
+    """
+    SDE abstract class. Functions are designed for a mini-batch of inputs.
+
+    * abstract class
+    
+    - Properties:
+        - is_reversing: A `bool` indicating whether the SDE is reversing
+        - N: A `int` indicating the number of discretization time steps
+        - T: A `int` indicating the end time of the SDE
+
+    - Methods to implement:
+        - `marginal_prob`: Parameters to determine the marginal distribution of the SDE, $p_t(x)$
+        - `prior_logp`: Compute log-density of the prior distribution
+        - `prior_sampling`: Generate one sample from the prior distribution, $p_T(x)$
+        - `__call__`: Compute drift and diffusion coefficients
+    """
     is_reversing: bool
     N: int
 
@@ -37,7 +52,7 @@ class SDE(abc.ABC):
             f, G
         """
         dt = 1 / self.N
-        drift, diffusion = self.__call__(x, t)
+        drift, diffusion = self(x, t)
         f = drift * dt
         G = diffusion * torch.sqrt(torch.tensor(dt, device=t.device))
         return f, G
@@ -67,4 +82,12 @@ class SDE(abc.ABC):
 
     @abc.abstractmethod
     def __call__(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute drift and diffusion coefficients.
+
+        - Parameters:
+            - x: a `torch.Tensor` of the input data
+            - t: a time step in `torch.Tensor`
+        - Returns: A `tuple` of drift and diffusion coefficients in `torch.Tensor`
+        """
         pass
