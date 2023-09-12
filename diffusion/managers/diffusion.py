@@ -20,24 +20,19 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     * Extends: `torchmanager.Manager`
 
     - Properties:
-        - alphas: A `torch.Tensor` of alphas calculated by betas
-        - betas: A `torch.Tensor` of scheduled betas
-        - beta_space: A `data.BetaSpace` of the scheduled beta space
         - time_steps: An `int` of total time steps
     - Methods to implement:
         - forward_diffusion: Forward pass of diffusion model, sample noises
         - sampling: Samples a given number of images
     """
-    beta_space: BetaSpace
     time_steps: int
 
-    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    def __init__(self, model: Module, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 
         - Prarameters:
             - model: An optional target `torch.nn.Module` to be trained
-            - betas: A scheduled beta space in `data.BetaSpace`
             - time_steps: An `int` of total number of steps
             - optimizer: An optional `torch.optim.Optimizer` to train the model
             - loss_fn: An optional `Loss` object to calculate the loss for single loss or a `dict` of losses in `Loss` with their names in `str` to calculate multiple losses
@@ -45,7 +40,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         """
         # initialize
         super().__init__(model, optimizer, loss_fn, metrics)
-        self.beta_space = beta_space
         self.time_steps = time_steps
 
     def backward(self, loss: torch.Tensor) -> None:

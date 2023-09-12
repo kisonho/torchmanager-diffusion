@@ -13,11 +13,13 @@ SDEType = TypeVar("SDEType", bound=SDE)
 
 
 class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
+    beta_space: BetaSpace
     is_continous: bool
     sde: SDEType
 
     def __init__(self, model: Module, /, beta_space: BetaSpace, sde: SDEType, time_steps: int, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = ...) -> None:
-        super().__init__(model, beta_space, time_steps, optimizer, loss_fn, metrics)
+        super().__init__(model, time_steps, optimizer, loss_fn, metrics)
+        self.beta_space = beta_space
         self.is_continous = is_continous
         self.sde = sde
 

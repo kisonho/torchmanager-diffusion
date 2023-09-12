@@ -1,15 +1,27 @@
+from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, TypeVar
+from torchmanager_core.typing import Any, Optional, TypeVar, Union
 
 from diffusion.data import DiffusionData
 from diffusion.nn import DiffusionModule
+from diffusion.scheduling import BetaSpace
 from .diffusion import DiffusionManager
 
 Module = TypeVar("Module", bound=DiffusionModule)
 
 
 class DDPMManager(DiffusionManager[Module]):
-    """Main DDPM Manager"""
+    """
+    Main DDPM Manager
+    
+    - Parameters:
+        - beta_space: A scheduled `BetaSpace`
+    """
+    beta_space: BetaSpace
+
+    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+        super().__init__(model, time_steps, optimizer, loss_fn, metrics)
+        self.beta_space = beta_space
 
     def forward_diffusion(self, data: torch.Tensor, **kwargs: Any) -> tuple[DiffusionData, torch.Tensor]:
         """
