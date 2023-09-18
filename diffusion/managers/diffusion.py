@@ -117,7 +117,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
 
         # sampling loop time step
-        for i in reversed(range(0, self.time_steps)):
+        for i in reversed(range(1, self.time_steps + 1)):
             # fetch data
             t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
 

@@ -88,7 +88,7 @@ class BetaSpace(NamedTuple):
             - time_steps: An `int` of the total time steps
         - Returns: A random sampled `torch.Tensor` for t
         """
-        return torch.randint(0, time_steps, (batch_size,), device=self.device).long()
+        return torch.randint(1, time_steps, (batch_size,), device=self.device).long()
 
     def to(self, device: torch.device) -> Self:
         return BetaSpace(self.betas.to(device))
