@@ -87,7 +87,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             c = devices.move_to_device(condition, device) if condition is not None else None
             if c is not None:
                 assert isinstance(c, torch.Tensor), "Condition must be a valid `torch.Tensor` when given."
-            return self.sampling(num_images, noises=imgs, condition=condition, show_verbose=show_verbose)
+            return self.sampling(num_images, x_t=imgs, condition=condition, show_verbose=show_verbose)
         except Exception as error:
             view.logger.error(error)
             runtime_error = errors.PredictionError()
@@ -102,18 +102,19 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, noises: torch.Tensor, condition: Optional[torch.Tensor] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
         - Parameters:
             - num_images: An `int` of number of images to generate
-            - image_size: An `int` or `tuple` of `int` of image size to generate
+            - x_t: A `torch.Tensor` of the image at T step
+            - condition: An optional `torch.Tensor` of the condition to generate images
             - show_verbose: A `bool` flag to show the progress bar during testing
         - Retruns: A `list` of `torch.Tensor` generated results
         '''
         # initialize
-        imgs = noises
+        imgs = x_t
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
 
         # sampling loop time step
@@ -173,7 +174,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 # sampling
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
-                x = self.sampling(int(x_test.shape[0]), noises=noises, condition=x_test, show_verbose=False)
+                x = self.sampling(int(x_test.shape[0]), x_t=noises, condition=x_test, show_verbose=False)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, device)
                 y_test = devices.move_to_device(y_test, device)

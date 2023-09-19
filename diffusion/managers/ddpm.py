@@ -42,7 +42,7 @@ class DDPMManager(DiffusionManager[Module]):
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(t, x_start.shape)
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
         return DiffusionData(x, t), noise
-    
+
     def to(self, device: torch.device) -> None:
         self.beta_space = self.beta_space.to(device)
         return super().to(device)
@@ -57,7 +57,7 @@ class DDPMManager(DiffusionManager[Module]):
         # Use our model (noise predictor) to predict the mean
         y, _ = self.forward(data)
         y: torch.Tensor = sqrt_recip_alphas_t * (data.x - betas_t * y / sqrt_one_minus_alphas_cumprod_t)
-        if i > 0:
+        if i > 1:
             posterior_variance_t = self.beta_space.sample_posterior_variance(data.t, data.x.shape).to(y.device)
             noise = torch.randn_like(data.x, device=y.device)
             # Algorithm 2 line 4:

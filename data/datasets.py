@@ -2,7 +2,7 @@ from torchmanager_core import devices, torch
 from torchmanager_core.typing import Callable, Enum, Optional, Union, TypeVar
 from torchvision import datasets, transforms
 
-from diffusion.data import Dataset
+from diffusion.data import SequenceDataset as Dataset
 
 T = TypeVar("T")
 
