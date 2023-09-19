@@ -1,6 +1,6 @@
 from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Generic, Optional, Union, TypeVar
+from torchmanager_core.typing import Any, Generic, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
 from diffusion.nn import DiffusionModule
@@ -57,8 +57,8 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         loss = self.compiled_losses(y, y_train) if self.loss_fn is not None and y_train is not None else None
         return y, loss
 
-    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
-        t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long()
+    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+        t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         z = torch.randn_like(data, device=t.device)
         mean, std = self.sde.marginal_prob(data, t)
         x = mean + std[:, None, None, None] * z
@@ -70,14 +70,14 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
-    def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE
             timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
             sigma = self.sde.discrete_sigmas[timestep]
             adjacent_sigma = torch.where(timestep == 0, torch.zeros_like(data.t), self.sde.discrete_sigmas.to(data.t.device)[timestep - 1])
-            score = self.forward(data)
+            predicted_noise, _ = score, _ = self.forward(data)
             x_mean = data.x + score * (sigma ** 2 - adjacent_sigma ** 2)[:, None, None, None]
             std = torch.sqrt((adjacent_sigma ** 2 * (sigma ** 2 - adjacent_sigma ** 2)) / (sigma ** 2))
             noise = torch.randn_like(data.x)
@@ -87,7 +87,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             assert self.beta_space is not None, "Beta space is required for VPSDE."
             timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
             beta = self.beta_space.sample_betas(timestep, data.x.shape)
-            score = self.forward(data)
+            predicted_noise, _ = score, _ = self.forward(data)
             x_mean = (data.x + beta[:, None, None, None] * score) / torch.sqrt(1. - beta)[:, None, None, None]
             noise = torch.randn_like(data.x)
             y = x_mean + torch.sqrt(beta)[:, None, None, None] * noise
@@ -97,6 +97,6 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             f = f - G[:, None, None, None] ** 2 * self.model(data) * 0.5
             G = torch.zeros_like(G)
             z = torch.randn_like(data.x)
-            x_mean = data.x - f
+            predicted_noise = x_mean = data.x - f
             y = x_mean + G[:, None, None, None] * z
-        return y
+        return (y, predicted_noise) if return_noise else y

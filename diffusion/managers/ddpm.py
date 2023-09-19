@@ -23,7 +23,7 @@ class DDPMManager(DiffusionManager[Module]):
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
 
-    def forward_diffusion(self, data: torch.Tensor, **kwargs: Any) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -34,7 +34,7 @@ class DDPMManager(DiffusionManager[Module]):
         # initialize
         x_start = data.to(self.beta_space.device)
         batch_size = x_start.shape[0]
-        t = self.beta_space.sample(batch_size, self.time_steps)
+        t = self.beta_space.sample(batch_size, self.time_steps) if t is None else t.to(x_start.device)
 
         # initialize noises
         noise = torch.randn_like(x_start, device=x_start.device)
@@ -47,7 +47,7 @@ class DDPMManager(DiffusionManager[Module]):
         self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
-    def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # initialize betas by given t
         betas_t = self.beta_space.sample_betas(data.t, data.x.shape)
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(data.t, data.x.shape)
@@ -55,11 +55,11 @@ class DDPMManager(DiffusionManager[Module]):
 
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean
-        y, _ = self.forward(data)
-        y: torch.Tensor = sqrt_recip_alphas_t * (data.x - betas_t * y / sqrt_one_minus_alphas_cumprod_t)
+        predicted_noise, _ = self.forward(data)
+        y: torch.Tensor = sqrt_recip_alphas_t * (data.x - betas_t * predicted_noise / sqrt_one_minus_alphas_cumprod_t)
         if i > 1:
             posterior_variance_t = self.beta_space.sample_posterior_variance(data.t, data.x.shape).to(y.device)
             noise = torch.randn_like(data.x, device=y.device)
             # Algorithm 2 line 4:
             y += torch.sqrt(posterior_variance_t) * noise
-        return y
+        return (y, predicted_noise) if return_noise else y

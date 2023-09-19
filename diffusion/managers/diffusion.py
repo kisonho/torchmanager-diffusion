@@ -51,12 +51,14 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return super().forward(x_train, y_test)
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
 
         - Parameters:
             - data: Any kind of clear data
+            - condition: An optional `torch.Tensor` of the condition to generate images
+            - t: An optional `torch.Tensor` of the time step, sampling uniformly if not given
         - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and noises in `torch.Tensor`
         """
         return NotImplemented
@@ -98,7 +100,16 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             devices.empty_cache()
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Sampling step of diffusion model
+
+        - Parameters:
+            - data: A `DiffusionData` object
+            - i: An `int` of current time step
+            - return_noise: A `bool` flag to return predicted noise
+        - Returns: A `torch.Tensor` of noised image
+        """
         return NotImplemented
 
     @torch.no_grad()
@@ -125,6 +136,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             # append to predicitions
             x = DiffusionData(imgs, t, condition=condition)
             y = self.sampling_step(x, i)
+            assert isinstance(y, torch.Tensor), "The output must be a valid `torch.Tensor`."
             imgs = y.to(imgs.device)
 
             # update progress bar
