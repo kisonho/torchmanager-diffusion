@@ -88,7 +88,7 @@ class BetaSpace(NamedTuple):
             - time_steps: An `int` of the total time steps
         - Returns: A random sampled `torch.Tensor` for t
         """
-        return torch.randint(1, time_steps, (batch_size,), device=self.device).long()
+        return torch.randint(1, time_steps+1, (batch_size,), device=self.device).long()
 
     def to(self, device: torch.device) -> Self:
         return BetaSpace(self.betas.to(device))
@@ -100,5 +100,5 @@ def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Siz
     while considering the batch dimension.
     """
     batch_size = t.shape[0]
-    vals = vals.gather(-1, t)
+    vals = vals.gather(-1, t-1)
     return vals.reshape(batch_size, *((1,) * (len(x_shape) - 1)))
