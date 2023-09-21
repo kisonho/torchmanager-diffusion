@@ -71,10 +71,10 @@ def load_cifar10(root_dir: str, batch_size: int, device: torch.device = devices.
 
     # load dataset
     cifar10_training = datasets.CIFAR10(root_dir, transform=training_preprocess, download=True)
-    cifar10_training = Subset(cifar10_training, [i for i in range(100)])
+    # cifar10_training = Subset(cifar10_training, [i for i in range(100)])
     training_dataset: Dataset[torch.Tensor] = Dataset(cifar10_training, batch_size, device=device, drop_last=True, shuffle=True)
     cifar10_testing = datasets.CIFAR10(root_dir, train=False, transform=testing_preprocess, download=True)
-    cifar10_testing = Subset(cifar10_testing, [i for i in range(10)])
+    # cifar10_testing = Subset(cifar10_testing, [i for i in range(10)])
     testing_dataset: Dataset[torch.Tensor] = Dataset(cifar10_testing, batch_size, device=device)
     return training_dataset, testing_dataset, 3, image_size
 

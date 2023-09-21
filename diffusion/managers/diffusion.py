@@ -82,6 +82,8 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             # move model to device
             if use_multi_gpus:
                 self.data_parallel(target_devices)
+            else:
+                imgs = imgs.to(device)
             self.to(device)
             self.model.eval()
 
