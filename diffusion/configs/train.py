@@ -14,7 +14,7 @@ class Configs(_Configs):
     beta_scheduler: BetaScheduler
     data_dir: str
     dataset: Optional[str]
-    device: torch.device
+    device: Optional[torch.device]
     epochs: int
     output_model: str
     show_verbose: bool
@@ -26,7 +26,7 @@ class Configs(_Configs):
         super().format_arguments()
         self.beta_scheduler = BetaScheduler(self.beta_scheduler)
         self.data_dir = os.path.normpath(self.data_dir)
-        self.device = torch.device(self.device)
+        self.device = torch.device(self.device) if self.device is not None else None
         self.output_model = os.path.normpath(self.output_model)
 
         # initialize console
@@ -69,7 +69,7 @@ class Configs(_Configs):
 
         # device arguments
         device_args = parser.add_argument_group("Device Arguments")
-        device_args.add_argument("--device", type=str, default="cuda", help="The target device to run for the experiment.")
+        device_args.add_argument("--device", type=str, default=None, help="The target device to run for the experiment.")
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
