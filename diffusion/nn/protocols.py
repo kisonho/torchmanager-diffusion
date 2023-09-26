@@ -3,6 +3,14 @@ from torchmanager_core.typing import Optional, Protocol
 
 
 class TimedData(Protocol):
-    x: torch.Tensor
-    t: torch.Tensor
-    condition: Optional[torch.Tensor]
+    @property
+    def x(self) -> torch.Tensor:
+        return NotImplemented
+    
+    @property
+    def t(self) -> torch.Tensor:
+        return NotImplemented
+    
+    @property
+    def condition(self) -> Optional[torch.Tensor]:
+        return NotImplemented
