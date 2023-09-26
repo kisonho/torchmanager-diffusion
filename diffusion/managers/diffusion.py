@@ -246,10 +246,10 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def train_step(self, x_train: Any, y_train: torch.Tensor) -> dict[str, float]:
-        x_train, noise = self.forward_diffusion(y_train, condition=x_train)
-        return super().train_step(x_train, noise)
+    def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor) -> dict[str, float]:
+        x_train, noise = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+        return super().train_step(x_train, noise.to(y_train.device))
 
-    def test_step(self, x_test: Any, y_test: Any) -> dict[str, float]:
-        x_test, noise = self.forward_diffusion(y_test, condition=x_test)
-        return super().test_step(x_test, noise)
+    def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
+        x_test, noise = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+        return super().test_step(x_test, noise.to(y_test.device))
