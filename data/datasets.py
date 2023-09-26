@@ -1,4 +1,3 @@
-from torch.utils.data import Subset
 from torchmanager_core import devices, torch
 from torchmanager_core.typing import Callable, Enum, Optional, Union, TypeVar
 from torchvision import datasets, transforms
@@ -13,7 +12,7 @@ class Datasets(Enum):
     CIFAR10 = "cifar10"
     MNIST = "mnist"
 
-    def load(self, root_dir: str, batch_size: int, device: torch.device = devices.GPU, image_size: Optional[Union[int, tuple[int, int]]] = None) -> tuple[Dataset[torch.Tensor], Dataset[torch.Tensor], int, Union[int, tuple[int, int]]]:
+    def load(self, root_dir: str, batch_size: int, device: Optional[torch.device] = None, image_size: Optional[Union[int, tuple[int, int]]] = None) -> tuple[Dataset[torch.Tensor], Dataset[torch.Tensor], int, Union[int, tuple[int, int]]]:
         """
         Load the dataset
 
@@ -23,6 +22,10 @@ class Datasets(Enum):
             - image_size: An optional of image size in `int` or a `tuple` of two `int` for the dimensions
         - Returns: A `tuple` of a training dataset in `Dataset` contains `torch.Tensor` elements, a testing dataset in `Dataset` contains `torch.Tensor` elements, an `int` of input channels, and an `int` of image size or `tuple` of image size dimensions in `int`
         """
+        # set default device when not given
+        device = devices.CPU if device is None else device
+
+        # load dataset
         if self == Datasets.CIFAR10:
             return load_cifar10(root_dir, batch_size, device=device, image_size=image_size)
         elif self == Datasets.MNIST:
