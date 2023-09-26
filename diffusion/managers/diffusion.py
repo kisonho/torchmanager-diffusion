@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Collection, Iterable, Optional, Tuple, Union, TypeVar
+from torchmanager_core.typing import Any, Iterable, Optional, Tuple, Union, TypeVar
 
 from diffusion.data import DiffusionData
 from diffusion.nn import DiffusionModule
@@ -246,7 +246,10 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def unpack_data(self, data: Collection[Any]) -> Tuple[Any, Any]:
-        x, y = super().unpack_data(data)
-        x, y = self.forward_diffusion(y, condition=x)
-        return x, y
+    def train_step(self, x_train: Any, y_train: torch.Tensor) -> dict[str, float]:
+        x_train, noise = self.forward_diffusion(y_train, condition=x_train)
+        return super().train_step(x_train, noise)
+
+    def test_step(self, x_test: Any, y_test: Any) -> dict[str, float]:
+        x_test, noise = self.forward_diffusion(y_test, condition=x_test)
+        return super().test_step(x_test, noise)

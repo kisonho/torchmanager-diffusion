@@ -1,6 +1,6 @@
 from torch.nn import functional as F
 from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple, Self
+from torchmanager_core.typing import Collection, NamedTuple, Self
 
 
 class BetaSpace(NamedTuple):
