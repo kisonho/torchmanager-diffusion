@@ -7,7 +7,6 @@ from torchmanager_core.typing import Any, Iterable, Optional, Tuple, Union, Type
 
 from diffusion.data import DiffusionData
 from diffusion.nn import DiffusionModule
-from diffusion.scheduling import BetaSpace
 
 Module = TypeVar("Module", bound=DiffusionModule)
 

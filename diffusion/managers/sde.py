@@ -17,7 +17,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
     is_continous: bool
     sde: SDEType
 
-    def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = ...) -> None:
+    def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
         self.is_continous = is_continous

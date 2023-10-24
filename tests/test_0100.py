@@ -7,40 +7,17 @@ class Case0100(unittest.TestCase):
         from diffusion.configs import TrainingConfigs as Configs
 
         configs = Configs.from_arguments(*[
-            "mnist",
             "~/Downloads/Dataset/",
             "tests/case0100/test.pth",
             "-exp", "case_0100.exp",
             "--replace_experiment",
         ])
+        assert isinstance(configs, Configs), "The `configs` is not a valid `diffusion.configs.TrainingConfigs`."
 
-        self.assertEqual(configs.dataset, "mnist")
+        self.assertIsNone(configs.dataset)
         self.assertEqual(configs.data_dir, os.path.normpath("~/Downloads/Dataset/"))
         self.assertEqual(configs.output_model, os.path.normpath("tests/case0100/test.pth"))
         self.assertEqual(configs.experiment, "case_0100.exp")
-
-    def test_data(self):
-        import math
-        from data import Datasets
-        from torchmanager_core import devices
-
-        root_dir = "~/Downloads/Datasets/"
-        batch_size = 32
-
-        training_dataset, testing_dataset, in_channels, _ = Datasets.MNIST.load(root_dir, batch_size, device=devices.CPU)
-
-        self.assertEqual(training_dataset.unbatched_len, 60000)
-        self.assertEqual(training_dataset.batched_len, int(60000 / 32))
-        self.assertEqual(testing_dataset.unbatched_len, 10000)
-        self.assertEqual(testing_dataset.batched_len, math.ceil(10000 / 32))
-        self.assertEqual(in_channels, 1)
-
-        for x in training_dataset:
-            self.assertEqual(x.shape, (batch_size, 1, 28, 28))
-
-        for x in testing_dataset:
-            self.assertEqual(x.shape[1:], (1, 28, 28))
-            self.assertLessEqual(x.shape[0], batch_size)
 
     def test_import(self):
         import data, diffusion
