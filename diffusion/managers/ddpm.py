@@ -63,3 +63,4 @@ class DDPMManager(DiffusionManager[Module]):
             # Algorithm 2 line 4:
             y += torch.sqrt(posterior_variance_t) * noise
         return (y, predicted_noise) if return_noise else y
+    

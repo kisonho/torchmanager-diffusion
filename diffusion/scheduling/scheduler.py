@@ -11,6 +11,7 @@ class BetaScheduler(Enum):
     LINEAR = "linear"
     QUADRATIC = "quadratic"
     SIGMOID = "sigmoid"
+
     def calculate_space(self, time_steps: int, /) -> BetaSpace:
         """
         Calculate beta space by given steps
@@ -22,7 +23,7 @@ class BetaScheduler(Enum):
         scheduler_scope = globals()
         schedule_fn: Callable[[int], BetaSpace] = scheduler_scope[f"{self.value}_schedule"]
         return schedule_fn(time_steps)
-    
+
     def calculate_space_with_range(self, time_steps: int, /, beta_start: float, beta_end: float) -> BetaSpace:
         """
         Calculate beta space by given steps and beta range

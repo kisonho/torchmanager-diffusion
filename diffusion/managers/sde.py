@@ -70,6 +70,9 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, end_index: int = 0, show_verbose: bool = False) -> list[torch.Tensor]:
+        return super().sampling(num_images, x_t, condition, end_index=end_index, show_verbose=show_verbose)
+
     def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # predict
         if isinstance(self.sde, VESDE):

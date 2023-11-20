@@ -114,7 +114,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, end_index: int = 1, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -122,6 +122,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - num_images: An `int` of number of images to generate
             - x_t: A `torch.Tensor` of the image at T step
             - condition: An optional `torch.Tensor` of the condition to generate images
+            - end_index: An `int` of the end index of reversed time step
             - show_verbose: A `bool` flag to show the progress bar during testing
         - Retruns: A `list` of `torch.Tensor` generated results
         '''
@@ -130,7 +131,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
 
         # sampling loop time step
-        for i in reversed(range(1, self.time_steps + 1)):
+        for i in reversed(range(end_index, self.time_steps + end_index)):
             # fetch data
             t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
 

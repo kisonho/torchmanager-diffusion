@@ -4,7 +4,7 @@ The torchmanager implementation for diffusion models.
 ## Pre-requisites
 * Python >= 3.9
 * [PyTorch](https://pytorch.org)
-* [torchmanager](https://github.com/kisonho/torchmanager) >= 1.2rc
+* [torchmanager](https://github.com/kisonho/torchmanager) >= 1.2
 
 ## Installation
 * PyPi: `pip install --pre torchmanager-diffusion`

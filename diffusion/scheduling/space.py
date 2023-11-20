@@ -1,6 +1,6 @@
 from torch.nn import functional as F
 from torchmanager_core import torch
-from torchmanager_core.typing import Collection, NamedTuple, Self
+from torchmanager_core.typing import NamedTuple, Self
 
 
 class BetaSpace(NamedTuple):
@@ -79,7 +79,7 @@ class BetaSpace(NamedTuple):
     def sample_sqrt_recip_alphas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.sqrt_recip_alphas, t, shape)
 
-    def sample(self, batch_size: int, time_steps: int) -> torch.Tensor:
+    def sample(self, batch_size: int, time_steps: int, *, start_index: int = 1) -> torch.Tensor:
         """
         Random samples t in given space (linear if not given)
 
@@ -88,7 +88,7 @@ class BetaSpace(NamedTuple):
             - time_steps: An `int` of the total time steps
         - Returns: A random sampled `torch.Tensor` for t
         """
-        return torch.randint(1, time_steps+1, (batch_size,), device=self.device).long()
+        return torch.randint(start_index, time_steps+start_index, (batch_size,), device=self.device).long()
 
     def to(self, device: torch.device) -> Self:
         return BetaSpace(self.betas.to(device))
