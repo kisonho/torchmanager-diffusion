@@ -3,12 +3,9 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Optional, Tuple, Union, TypeVar
+from torchmanager_core.typing import Any, Iterable, Module, Optional, Tuple, Union
 
 from diffusion.data import DiffusionData
-from diffusion.nn import DiffusionModule
-
-Module = TypeVar("Module", bound=DiffusionModule)
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):

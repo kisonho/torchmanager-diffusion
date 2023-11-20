@@ -1,6 +1,6 @@
 from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, Generic, Optional, Union, TypeVar
+from torchmanager_core.typing import Any, Generic, Module, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
 from diffusion.nn import DiffusionModule
@@ -8,7 +8,6 @@ from diffusion.scheduling import BetaSpace
 from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
 from .diffusion import DiffusionManager
 
-Module = TypeVar("Module", bound=DiffusionModule)
 SDEType = TypeVar("SDEType", bound=SDE)
 
 

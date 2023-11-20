@@ -1,13 +1,10 @@
 from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, Optional, TypeVar, Union
+from torchmanager_core.typing import Any, Module, Optional, Union
 
 from diffusion.data import DiffusionData
-from diffusion.nn import DiffusionModule
 from diffusion.scheduling import BetaSpace
 from .diffusion import DiffusionManager
-
-Module = TypeVar("Module", bound=DiffusionModule)
 
 
 class DDPMManager(DiffusionManager[Module]):
