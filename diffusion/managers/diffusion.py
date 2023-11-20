@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Module, Optional, Tuple, Union
+from torchmanager_core.typing import Any, Iterable, Module, Optional, Union
 
 from diffusion.data import DiffusionData
 
@@ -42,9 +42,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         super().backward(loss)
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
         self.compiled_optimizer.step()
-
-    def forward(self, x_train: Any, y_test: Optional[Any] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        return super().forward(x_train, y_test)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:

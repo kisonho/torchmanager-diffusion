@@ -53,6 +53,7 @@ class DDPMManager(DiffusionManager[Module]):
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean
         predicted_noise, _ = self.forward(data)
+        assert isinstance(predicted_noise, torch.Tensor), "The model must return a `torch.Tensor` as predicted noise."
         y: torch.Tensor = sqrt_recip_alphas_t * (data.x - betas_t * predicted_noise / sqrt_one_minus_alphas_cumprod_t)
         if i > 1:
             posterior_variance_t = self.beta_space.sample_posterior_variance(data.t, data.x.shape).to(y.device)
