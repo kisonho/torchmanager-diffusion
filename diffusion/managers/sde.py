@@ -69,8 +69,9 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, end_index: int = 0, show_verbose: bool = False) -> list[torch.Tensor]:
-        return super().sampling(num_images, x_t, condition, end_index=end_index, show_verbose=show_verbose)
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[range] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+        sampling_range = range(self.time_steps) if sampling_range is None else sampling_range
+        return super().sampling(num_images, x_t, condition, sampling_range=sampling_range, show_verbose=show_verbose)
 
     def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # predict
