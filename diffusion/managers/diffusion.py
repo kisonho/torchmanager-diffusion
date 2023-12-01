@@ -108,7 +108,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, end_index: int = 1, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[range] = None, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -116,6 +116,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - num_images: An `int` of number of images to generate
             - x_t: A `torch.Tensor` of the image at T step
             - condition: An optional `torch.Tensor` of the condition to generate images
+            - start_index: An optional `int` of the start index of reversed time step
             - end_index: An `int` of the end index of reversed time step
             - show_verbose: A `bool` flag to show the progress bar during testing
         - Retruns: A `list` of `torch.Tensor` generated results
@@ -123,9 +124,10 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         # initialize
         imgs = x_t
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
+        sampling_range = range(self.time_steps, 1) if sampling_range is None else sampling_range
 
         # sampling loop time step
-        for i in reversed(range(end_index, self.time_steps + end_index)):
+        for i in sampling_range:
             # fetch data
             t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
 
@@ -143,7 +145,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return [img for img in imgs]
 
     @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, *, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, *, sampling_range: Optional[range] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> dict[str, float]:
         # normali testing if not sampling images
         if not sampling_images:
             return super().test(dataset, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose)
@@ -158,6 +160,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         summary: dict[str, float] = {}
         unbatched_len = dataset.batched_len if isinstance(dataset, Dataset) else len(dataset)
         progress_bar = view.tqdm(total=unbatched_len) if show_verbose else None
+        sampling_range = range(self.time_steps, 1) if sampling_range is None else sampling_range
 
         # reset loss function and metrics
         for _, m in self.metric_fns.items():
@@ -182,7 +185,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 # sampling
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
-                x = self.sampling(int(x_test.shape[0]), x_t=noises, condition=x_test, show_verbose=False)
+                x = self.sampling(int(x_test.shape[0]), x_t=noises, condition=x_test, sampling_range=sampling_range, show_verbose=False)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, device)
                 y_test = devices.move_to_device(y_test, device)
