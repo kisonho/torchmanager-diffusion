@@ -6,6 +6,7 @@ from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Iterable, Module, Optional, Union
 
 from diffusion.data import DiffusionData
+from diffusion.metrics import Diversity
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -108,7 +109,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[range] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[Union[reversed,range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -124,7 +125,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         # initialize
         imgs = x_t
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
-        sampling_range = range(self.time_steps, 1) if sampling_range is None else sampling_range
+        sampling_range = reversed(range(1, self.time_steps+1)) if sampling_range is None else sampling_range
 
         # sampling loop time step
         for i in sampling_range:
@@ -158,9 +159,8 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
         # initialize
         summary: dict[str, float] = {}
-        unbatched_len = dataset.batched_len if isinstance(dataset, Dataset) else len(dataset)
-        progress_bar = view.tqdm(total=unbatched_len) if show_verbose else None
-        sampling_range = range(self.time_steps, 1) if sampling_range is None else sampling_range
+        batched_len = dataset.batched_len if isinstance(dataset, Dataset) else len(dataset)
+        progress_bar = view.tqdm(total=batched_len) if show_verbose else None
 
         # reset loss function and metrics
         for _, m in self.metric_fns.items():
@@ -224,6 +224,85 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         except KeyboardInterrupt:
             view.logger.info("Testing interrupted.")
             return {}
+        except Exception as error:
+            view.logger.error(error)
+            runtime_error = errors.TestingError()
+            raise runtime_error from error
+        finally:
+            # close progress bar
+            if progress_bar is not None:
+                progress_bar.close()
+
+            # empty cache
+            if empty_cache:
+                self.to(cpu)
+                self.model = self.raw_model
+                self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
+                devices.empty_cache()
+
+    def test_diversity(self, num_samples: int, testing_dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> float:
+        """
+        Calculate diversity of the model.
+
+        - Parameters:
+            - num_samples: Number of samples for each image.
+            - testing_dataset: A `torch.utils.data.Dataset` for testing.
+            - device: A `torch.device` for testing.
+            - empty_cache: A `bool` flag to empty cache after testing.
+            - use_multi_gpus: A `bool` flag to use multi-gpus for testing.
+            - show_verbose: A `bool` flag to show progress bar.
+        - Returns: A `float` of diversity for sampled images.
+        """
+        # initialize device
+        cpu, device, target_devices = devices.search(device)
+        if device == cpu and len(target_devices) < 2:
+            use_multi_gpus = False
+        devices.set_default(target_devices[0])
+
+        # initialize
+        progress_bar = view.tqdm(total=len(testing_dataset)) if show_verbose else None
+        diversity_fn = Diversity(sample_dim=1)
+
+        try:
+            # set module status and move to device
+            if use_multi_gpus:
+                self.data_parallel(target_devices)
+            self.to(device)
+            self.model.eval()
+
+            # loop over dataset
+            for x_test, _ in testing_dataset:
+                # move x_test, y_test to device
+                if not use_multi_gpus:
+                    x_test = devices.move_to_device(x_test, device)
+                assert isinstance(x_test, torch.Tensor), "The input must be a valid `torch.Tensor`."
+
+                # initialize sampling
+                samples: list[torch.Tensor] = []
+
+                # sampling images
+                for _ in range(num_samples):
+                    # sampling
+                    y = self.predict(x_test.shape[0], x_test.shape[1:], condition=x_test, device=device, show_verbose=False, use_multi_gpus=use_multi_gpus)
+
+                    # append to samples
+                    y = [img.unsqueeze(0).unsqueeze(1) for img in y]
+                    y = torch.cat(y, dim=0)
+                    samples.append(y)
+
+                # calculate diversity
+                generated_samples = torch.cat(samples, dim=1)
+                diversity_fn(generated_samples, None)
+                r = diversity_fn.result
+
+                # update progress bar
+                if progress_bar is not None:
+                    progress_bar.set_postfix({"Diversity": r})
+                    progress_bar.update()
+            return float(diversity_fn.result)
+        except KeyboardInterrupt:
+            view.logger.info("Testing interrupted.")
+            return float(diversity_fn.result)
         except Exception as error:
             view.logger.error(error)
             runtime_error = errors.TestingError()
