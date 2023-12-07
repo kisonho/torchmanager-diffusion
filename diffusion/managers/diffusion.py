@@ -260,7 +260,8 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         devices.set_default(target_devices[0])
 
         # initialize
-        progress_bar = view.tqdm(total=len(testing_dataset)) if show_verbose else None
+        batched_len = testing_dataset.batched_len if isinstance(testing_dataset, Dataset) else len(testing_dataset)
+        progress_bar = view.tqdm(total=batched_len) if show_verbose else None
         diversity_fn = Diversity(sample_dim=1)
 
         try:
