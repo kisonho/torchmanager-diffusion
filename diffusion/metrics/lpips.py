@@ -17,4 +17,5 @@ class LPIPS(Metric):
     def forward(self, input: Any, target: Any) -> torch.Tensor:
         gt = target
         img = input
-        return self.lpips(gt, img)
+        lpips: torch.Tensor = self.lpips(gt, img)
+        return lpips.squeeze().mean()

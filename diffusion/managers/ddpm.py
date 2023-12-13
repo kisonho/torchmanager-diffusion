@@ -1,6 +1,6 @@
 from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, Module, Optional, Union
+from torchmanager_core.typing import Any, Module, Optional, Sequence, Union
 
 from diffusion.data import DiffusionData
 from diffusion.scheduling import BetaSpace
@@ -44,7 +44,7 @@ class DDPMManager(DiffusionManager[Module]):
         self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[Union[reversed, range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[Union[Sequence[int], reversed, range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
         sampling_range = range(self.time_steps) if sampling_range is None else sampling_range
         return super().sampling(num_images, x_t, condition, sampling_range=sampling_range, show_verbose=show_verbose)
 
@@ -65,4 +65,3 @@ class DDPMManager(DiffusionManager[Module]):
             # Algorithm 2 line 4:
             y += torch.sqrt(posterior_variance_t) * noise
         return (y, predicted_noise) if return_noise else y
-    

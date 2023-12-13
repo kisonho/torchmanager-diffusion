@@ -12,6 +12,7 @@ class Configs(_Configs):
     batch_size: int
     beta_range: Optional[list[float]]
     beta_scheduler: BetaScheduler
+    ckpt_path: Optional[str]
     data_dir: str
     dataset: Optional[str]
     device: Optional[torch.device]
@@ -25,6 +26,7 @@ class Configs(_Configs):
         # format arguments
         super().format_arguments()
         self.beta_scheduler = BetaScheduler(self.beta_scheduler)
+        self.ckpt_path = os.path.normpath(self.ckpt_path) if self.ckpt_path is not None else None
         self.data_dir = os.path.normpath(self.data_dir)
         self.device = torch.device(self.device) if self.device is not None else None
         self.output_model = os.path.normpath(self.output_model)
@@ -58,6 +60,7 @@ class Configs(_Configs):
         training_args.add_argument("-d", "--dataset", type=str, default=None, help="The target type of dataset.")
         training_args.add_argument("-b", "--batch_size", type=int, default=64, help="The batch size, default is 64.")
         training_args.add_argument("-e", "--epochs", type=int, default=100, help="The training epochs, default is 100.")
+        training_args.add_argument("--ckpt_path", type=str, default=None, help="The path to the checkpoint file to continue training.")
         training_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
 
         # diffusion arguments
