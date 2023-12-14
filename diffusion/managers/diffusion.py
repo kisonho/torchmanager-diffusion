@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Module, Optional, Union
+from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, Union
 
 from diffusion.data import DiffusionData
 from diffusion.metrics import Diversity
@@ -50,7 +50,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         Forward pass of diffusion model, sample noises
 
         - Parameters:
-            - data: Any kind of clear data
+            - data: Any kind of noised data
             - condition: An optional `torch.Tensor` of the condition to generate images
             - t: An optional `torch.Tensor` of the time step, sampling uniformly if not given
         - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and noises in `torch.Tensor`
@@ -58,7 +58,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], reversed,range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         # find available device
         cpu, device, target_devices = devices.search(device)
         if device == cpu and len(target_devices) < 2:
@@ -85,7 +85,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             c = devices.move_to_device(condition, device) if condition is not None else None
             if c is not None:
                 assert isinstance(c, torch.Tensor), "Condition must be a valid `torch.Tensor` when given."
-            return self.sampling(num_images, x_t=imgs, condition=condition, show_verbose=show_verbose)
+            return self.sampling(num_images, imgs, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
         except Exception as error:
             view.logger.error(error)
             runtime_error = errors.PredictionError()
@@ -96,7 +96,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             devices.empty_cache()
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Sampling step of diffusion model
 
@@ -109,7 +109,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[Union[reversed,range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], reversed,range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -146,7 +146,23 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return [img for img in imgs]
 
     @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, *, sampling_range: Optional[range] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range, reversed]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+        """
+        Test target model
+
+        - Parameters:
+            - dataset: A `torch.utils.data.DataLoader` or `.data.Dataset` dataset
+            - *args: An optional `tuple` of `Any` of additional arguments for sampling
+            - sampling_images: A `bool` flag to sample images during testing
+            - sampling_shape: An optional `int` or `tuple` of `int` of the shape of sampled images
+            - sampling_range: An optional `Iterable[int]`, `range`, or `reversed` of the range of time steps to sample
+            - device: An optional `torch.device` to test on if not using multi-GPUs or an optional default `torch.device` for testing otherwise
+            - empyt_cache: A `bool` flag to empty cache after testing
+            - use_multi_gpus: A `bool` flag to use multi gpus during testing
+            - show_verbose: A `bool` flag to show the progress bar during testing
+            - **kwargs: An optional `dict` of `Any` of additional keyword arguments for sampling
+        - Returns: A `dict` of validation summary
+        """
         # normali testing if not sampling images
         if not sampling_images:
             return super().test(dataset, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose)
@@ -185,7 +201,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 # sampling
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
-                x = self.sampling(int(x_test.shape[0]), x_t=noises, condition=x_test, sampling_range=sampling_range, show_verbose=False)
+                x = self.sampling(int(x_test.shape[0]), x_t=noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=False, **kwargs)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, device)
                 y_test = devices.move_to_device(y_test, device)
@@ -240,7 +256,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
                 devices.empty_cache()
 
-    def test_diversity(self, num_samples: int, testing_dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False) -> float:
+    def test_diversity(self, num_samples: int, testing_dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_range: Optional[Union[Sequence[int], range, reversed]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> float:
         """
         Calculate diversity of the model.
 
@@ -284,7 +300,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 # sampling images
                 for _ in range(num_samples):
                     # sampling
-                    y = self.predict(x_test.shape[0], x_test.shape[1:], condition=x_test, device=device, show_verbose=False, use_multi_gpus=use_multi_gpus)
+                    y = self.predict(x_test.shape[0], x_test.shape[1:], *args, condition=x_test, sampling_range=sampling_range, device=device, show_verbose=False, use_multi_gpus=use_multi_gpus, **kwargs)
 
                     # append to samples
                     y = [img.unsqueeze(0).unsqueeze(1) for img in y]
@@ -324,9 +340,9 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         super().to(device)
 
     def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor) -> dict[str, float]:
-        x_train, noise = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
-        return super().train_step(x_train, noise.to(y_train.device))
+        x_train_noise, noise = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+        return super().train_step(x_train_noise, noise.to(y_train.device))
 
     def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
-        x_test, noise = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
-        return super().test_step(x_test, noise.to(y_test.device))
+        x_test_noise, noise = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+        return super().test_step(x_test_noise, noise.to(y_test.device))

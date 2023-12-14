@@ -20,7 +20,7 @@ class DDPMManager(DiffusionManager[Module]):
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
 
-    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
 
