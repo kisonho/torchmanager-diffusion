@@ -11,6 +11,7 @@ packages = [
 python = "^3.9"
 torchmanager = "^1.2"
 einops = "*"
+lpips = "*
 
 [build-system]
 requires = ["poetry-core"]
