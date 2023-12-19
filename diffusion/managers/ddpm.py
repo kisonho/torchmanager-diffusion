@@ -38,7 +38,7 @@ class DDPMManager(DiffusionManager[Module]):
         sqrt_alphas_cumprod_t = self.beta_space.sample_sqrt_alphas_cumprod(t, x_start.shape)
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(t, x_start.shape)
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
-        return DiffusionData(x, t), noise
+        return DiffusionData(x, t, condition=condition), noise
 
     def to(self, device: torch.device) -> None:
         self.beta_space = self.beta_space.to(device)

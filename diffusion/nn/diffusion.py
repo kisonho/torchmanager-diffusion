@@ -4,7 +4,7 @@ from torchmanager_core.typing import Any
 from .protocols import TimedData
 
 
-class DiffusionModule(torch.nn.Module, abc.ABC):
+class TimedModule(torch.nn.Module, abc.ABC):
     """
     The basic diffusion model
 
@@ -22,7 +22,7 @@ class DiffusionModule(torch.nn.Module, abc.ABC):
     @abc.abstractmethod
     def unpack_data(self, x_in: TimedData) -> tuple[Any, ...]:
         """
-        Method to unpack `TimedData`
+        Method to unpack `TimedData`, the unpacked data will be passed as positional arguments to `forward` method
 
         - Parameters:
             x_in: The `TimedData` to unpack

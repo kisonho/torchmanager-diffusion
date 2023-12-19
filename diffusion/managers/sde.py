@@ -1,9 +1,8 @@
 from torchmanager import losses, metrics
-from torchmanager_core import torch
+from torchmanager_core import torch, view
 from torchmanager_core.typing import Any, Generic, Module, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
-from diffusion.nn import DiffusionModule
 from diffusion.scheduling import BetaSpace
 from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
 from .diffusion import DiffusionManager
@@ -12,15 +11,37 @@ SDEType = TypeVar("SDEType", bound=SDE)
 
 
 class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
+    """
+    A manager for training a neural network to predict the score function of a stochastic differential equation.
+
+    - Properties:
+        - beta_space: A scheduled `BetaSpace`
+        - is_continous: A `bool` flag of whether the SDE is continous or discrete
+        - sde: The SDE in `SDEType` to train
+    """
     beta_space: Optional[BetaSpace]
     is_continous: bool
     sde: SDEType
 
     def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+        """
+        Constructor
+
+        - Parameters:
+            - model: A neural network in `torch.nn.Module` to train
+            - sde: The SDE in `SDEType` to train
+            - time_steps: A `int` of the number of time steps
+            - beta_space: A scheduled `BetaSpace`
+            - is_continous: A `bool` flag of whether the SDE is continous or discrete
+            - optimizer: A `torch.optim.Optimizer` to optimize the model
+            - loss_fn: A `torchmanager.losses.Loss` or a `dict` of `torchmanager.losses.Loss` to calculate loss
+            - metrics: A `dict` of `torchmanager.metrics.Metric` to calculate metrics
+        """
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
         self.is_continous = is_continous
         self.sde = sde
+        view.warnings.warn("The `SDEManager` is still in beta with potential bugs.", category=UserWarning)
 
         # check parameters
         if isinstance(self.sde, VPSDE) and self.beta_space is None:
@@ -57,12 +78,20 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         return y, loss
 
     def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
-        t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
+        # sampling t
+        if t is not None:
+            t = t.to(data.device)
+        elif self.beta_space is not None:
+            t = self.beta_space.sample(data.shape[0], self.time_steps)
+        else:
+            t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long()
+
+        # add noise
         z = torch.randn_like(data, device=t.device)
         mean, std = self.sde.marginal_prob(data, t)
         x = mean + std[:, None, None, None] * z
         noise = z / std[:, None, None, None]
-        return DiffusionData(x, t), noise
+        return DiffusionData(x, t, condition=condition), noise
 
     def to(self, device: torch.device) -> None:
         if self.beta_space is not None:

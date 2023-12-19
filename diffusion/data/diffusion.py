@@ -1,8 +1,8 @@
 from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple, Optional, Self
+from torchmanager_core.typing import Optional, Self
 
 
-class DiffusionData(NamedTuple):
+class DiffusionData:
     """
     The data for diffusion model
 
@@ -17,7 +17,16 @@ class DiffusionData(NamedTuple):
     """A `torch.Tensor` of the main data"""
     t: torch.Tensor
     """A `torch.Tensor` of the time"""
-    condition: Optional[torch.Tensor] = None
+    condition: Optional[torch.Tensor]
+
+    def __init__(self, x: torch.Tensor, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> None:
+        self.x = x
+        self.t = t
+        self.condition = condition
 
     def to(self, device: torch.device) -> Self:
-        return DiffusionData(self.x.to(device), self.t.to(device), self.condition.to(device) if self.condition is not None else None)
+        self.x = self.x.to(device)
+        self.t = self.t.to(device)
+        if self.condition is not None:
+            self.condition = self.condition.to(device)
+        return self
