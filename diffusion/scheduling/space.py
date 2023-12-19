@@ -1,9 +1,9 @@
 from torch.nn import functional as F
 from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple, Self
+from torchmanager_core.typing import Self
 
 
-class BetaSpace(NamedTuple):
+class BetaSpace:
     """
     The scheduled beta space for diffusion model
 
@@ -11,7 +11,14 @@ class BetaSpace(NamedTuple):
 
     - Properties:
         - alphas: A `torch.Tensor` of related alphas
+        - alphas_cumprod: A `torch.Tensor` of alpha bar
+        - alphas_cumprod_prev: A `torch.Tensor` of previous alpha bar
+        - device: A `torch.device` of the device of betas
         - betas: A `torch.Tensor` of scheduled betas
+        - posterior_variance: A `torch.Tensor` of posterior variance
+        - sqrt_alphas_cumprod: A `torch.Tensor` of square root of alpha bar
+        - sqrt_one_minus_alphas_cumprod: A `torch.Tensor` of square root of one minus alpha bar
+        - sqrt_recip_alphas: A `torch.Tensor` of square root of reciprocal alpha
         - shape: A `torch.Size` of the shape of betas
         - space: An optional `torch.Tensor` of t space for sampling
     """
@@ -53,6 +60,7 @@ class BetaSpace(NamedTuple):
 
     @property
     def sqrt_recip_alphas(self) -> torch.Tensor:
+        """A `torch.Tensor` of square root of reciprocal alpha"""
         return (1 / self.alphas).sqrt()
 
     @property
@@ -60,9 +68,12 @@ class BetaSpace(NamedTuple):
         """A `torch.Size` of the shape of betas"""
         return self.betas.shape
 
+    def __init__(self, betas: torch.Tensor) -> None:
+        self.betas = betas
+
     def __repr__(self) -> str:
         return f"<BetaSpace {self.shape}>:\n \
-                beta={self.betas}"
+                beta={self.betas}>"
     
     def sample_betas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.betas, t, shape)
@@ -91,7 +102,8 @@ class BetaSpace(NamedTuple):
         return torch.randint(start_index, time_steps+start_index, (batch_size,), device=self.device).long()
 
     def to(self, device: torch.device) -> Self:
-        return BetaSpace(self.betas.to(device))
+        self.betas = self.betas.to(device)
+        return self
 
 
 def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Size) -> torch.Tensor:

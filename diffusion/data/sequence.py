@@ -1,13 +1,14 @@
-from torch.utils.data import Dataset as _TorchDataset
-from torchmanager.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset as _TorchDataset
+from torchmanager.data import Dataset
 from torchmanager_core import devices, torch
 from torchmanager_core.typing import Any, TypeVar, Sequence, Sized, Union
 
 T = TypeVar("T")
 
-class SequenceDataset(Dataset[T]):
+
+class UnsupervisedDataset(Dataset[T]):
     """
-    The main unsupervised dataset class to load a PyTorch dataset
+    The main unsupervised dataset class to load from a supervised dataset (ignore the labels)
 
     * extends `torchmanager.data.Dataset`
 
@@ -21,7 +22,7 @@ class SequenceDataset(Dataset[T]):
         self.data = data
 
     def __getitem__(self, index: Any) -> T:
-        x, _ = self.data[index]
+        x = self.data[index][0]
         return x
 
     @property

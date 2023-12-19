@@ -43,12 +43,25 @@ class BetaScheduler(Enum):
 
 
 def constant_schedule(time_steps: int, /, beta: float = 0.015) -> BetaSpace:
+    """
+    A constant schedule that always return a constant beta
+
+    - Parameters:
+        - time_steps: An `int` of total time steps required
+        - beta: A `float` of the beta value
+    - Returns: A `torch.Tensor` of betas wuth given value
+    """
     return BetaSpace(torch.zeros(time_steps) + beta)
 
 
 def cosine_schedule(time_steps: int, /, s: float = 0.008) -> BetaSpace:
     """
     cosine schedule as proposed in https://arxiv.org/abs/2102.09672
+
+    - Parameters:
+        - time_steps: An `int` of total time steps required
+        - s: A `float` of the cosine schedule parameter
+    - Returns: A `torch.Tensor` of betas in cosine schedule
     """
     steps = time_steps + 1
     x = torch.linspace(0, time_steps, steps)
@@ -59,14 +72,41 @@ def cosine_schedule(time_steps: int, /, s: float = 0.008) -> BetaSpace:
 
 
 def linear_schedule(time_steps: int, /, beta_start: float = 0.0001, beta_end: float = 0.01) -> BetaSpace:
+    """
+    A linear schedule that always return a linear beta
+
+    - Parameters:
+        - time_steps: An `int` of total time steps required
+        - beta_start: A `float` of the start beta value
+        - beta_end: A `float` of the end beta value
+    - Returns: A `torch.Tensor` of betas in linear schedule
+    """
     return BetaSpace(torch.linspace(beta_start, beta_end, time_steps))
 
 
 def quadratic_schedule(time_steps: int, /, beta_start: float = 0.0001, beta_end: float = 0.02) -> BetaSpace:
+    """
+    A quadratic schedule that always return a quadratic beta
+
+    - Parameters:
+        - time_steps: An `int` of total time steps required
+        - beta_start: A `float` of the start beta value
+        - beta_end: A `float` of the end beta value
+    - Returns: A `torch.Tensor` of betas in quadratic schedule
+    """
     return BetaSpace(torch.linspace(beta_start ** 0.5, beta_end ** 0.5, time_steps) ** 2)
 
 
 def sigmoid_schedule(time_steps: int, /, beta_start: float = 0.0001, beta_end: float = 0.02) -> BetaSpace:
+    """
+    A sigmoid schedule that always return a sigmoid beta
+
+    - Parameters:
+        - time_steps: An `int` of total time steps required
+        - beta_start: A `float` of the start beta value
+        - beta_end: A `float` of the end beta value
+    - Returns: A `torch.Tensor` of betas in sigmoid schedule
+    """
     betas = torch.linspace(-3, 3, time_steps)
     betas = betas.sigmoid()
     betas = (betas - betas.min()) / (betas.max() - betas.min())
