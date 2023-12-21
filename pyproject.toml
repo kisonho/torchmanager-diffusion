@@ -6,6 +6,7 @@ authors = ["Kison Ho <unfit-gothic.0q@icloud.com>"]
 packages = [
     { include = "diffusion" }
 ]
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
