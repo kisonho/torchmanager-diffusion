@@ -1,9 +1,9 @@
 from torch.nn import functional as F
 from torchmanager_core import torch
-from torchmanager_core.typing import Self
+from torchmanager_core.typing import NamedTuple
 
 
-class BetaSpace:
+class BetaSpace(NamedTuple):
     """
     The scheduled beta space for diffusion model
 
@@ -68,9 +68,6 @@ class BetaSpace:
         """A `torch.Size` of the shape of betas"""
         return self.betas.shape
 
-    def __init__(self, betas: torch.Tensor) -> None:
-        self.betas = betas
-
     def __repr__(self) -> str:
         return f"<BetaSpace {self.shape}>:\n \
                 beta={self.betas}>"
@@ -101,9 +98,8 @@ class BetaSpace:
         """
         return torch.randint(start_index, time_steps+start_index, (batch_size,), device=self.device).long()
 
-    def to(self, device: torch.device) -> Self:
-        self.betas = self.betas.to(device)
-        return self
+    def to(self, device: torch.device):
+        return BetaSpace(self.betas.to(device))
 
 
 def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Size) -> torch.Tensor:
