@@ -7,7 +7,7 @@ from torchmanager_core.typing import Optional, Union
 from ..version import DESCRIPTION
 
 
-class Configs(_Configs):
+class DDPMEvalConfigs(_Configs):
     """Training Configurations"""
     batch_size: int
     beta_scheduler: Optional[str]

@@ -8,7 +8,7 @@ from torchvision import models
 import data
 import diffusion
 from diffusion import DDPMManager as Manager
-from diffusion.configs import TestingConfigs
+from diffusion.configs import DDPMEvalConfigs as TestingConfigs
 
 
 def eval(configs: TestingConfigs, /, model: Optional[torch.nn.Module] = None) -> dict[str, float]:

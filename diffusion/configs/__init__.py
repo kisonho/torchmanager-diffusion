@@ -1,2 +1,2 @@
-from .eval import Configs as TestingConfigs
-from .train import Configs as TrainingConfigs
+from .eval import DDPMEvalConfigs
+from .train import Configs as TrainingConfigs, DDPMTrainingConfigs

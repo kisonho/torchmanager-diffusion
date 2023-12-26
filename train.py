@@ -3,7 +3,7 @@ from torchmanager import callbacks, losses
 
 import data
 import diffusion
-from diffusion.configs import TrainingConfigs
+from diffusion.configs import DDPMTrainingConfigs as TrainingConfigs
 
 
 def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
@@ -15,7 +15,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
     - Returns: A trained `diffusion.networks.Unet` model
     """
     # load datasets
-    training_dataset, validation_dataset, in_channels, _ = data.Datasets(configs.dataset).load(configs.data_dir, configs.batch_size, device=configs.device)
+    training_dataset, validation_dataset, in_channels, _ = data.Datasets.CIFAR10.load(configs.data_dir, configs.batch_size, device=configs.device)
 
     # load model
     model = diffusion.networks.build_unet(in_channels)
@@ -41,6 +41,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
 
     # train model
     model = manager.fit(training_dataset, configs.epochs, device=configs.device, use_multi_gpus=configs.use_multi_gpus, val_dataset=validation_dataset, show_verbose=configs.show_verbose, callbacks_list=callbacks_list)
+    assert isinstance(model, torch.nn.Module), "The model returned from manager is not a valid `torch.nn.Module`"
 
     # save model
     torch.save(model, configs.output_model)
