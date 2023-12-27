@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, Union
+from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, Union, overload
 
 from diffusion.data import DiffusionData
 from diffusion.metrics import Diversity
@@ -95,6 +95,16 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             self.model = self.raw_model.to(cpu)
             devices.empty_cache()
 
+    @overload
+    @abc.abstractmethod
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor:
+        ...
+
+    @overload
+    @abc.abstractmethod
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
     @abc.abstractmethod
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
@@ -135,7 +145,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             # append to predicitions
             x = DiffusionData(imgs, t, condition=condition)
             y = self.sampling_step(x, i)
-            assert isinstance(y, torch.Tensor), "The output must be a valid `torch.Tensor`."
             imgs = y.to(imgs.device)
 
             # update progress bar
