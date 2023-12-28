@@ -40,11 +40,6 @@ class Configs(_Configs):
         assert self.epochs > 0, _raise(ValueError(f"Epochs must be a positive number, got {self.epochs}."))
         assert self.time_steps > 0, _raise(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
 
-        # check beta range format
-        if self.beta_range is not None:
-            assert len(self.beta_range) == 2, "Beta range must be a two-sized list."
-            assert self.beta_range[0] > 0 and self.beta_range[1] > 0, "Beta start and end must be all positive numbers."
-
     @staticmethod
     def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
         # experiment arguments
