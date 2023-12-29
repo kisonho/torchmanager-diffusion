@@ -104,3 +104,5 @@ class DDPMTrainingConfigs(Configs):
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
+        if self.ckpt_path is not None:
+            view.logger.info(f"From checkpoint: {self.ckpt_path}")
