@@ -71,6 +71,8 @@ class Configs(_Configs):
         view.logger.info(f"Training settings: batch_size={self.batch_size}, epoch={self.epochs}, show_verbose={self.show_verbose}")
         view.logger.info(f"Device settings: device={self.device}, use_multi_gpus={self.use_multi_gpus}")
         view.logger.info(f"Diffusion model settings: time_steps={self.time_steps}")
+        if self.ckpt_path is not None:
+            view.logger.info(f"From checkpoint: {self.ckpt_path}")
 
 
 class DDPMTrainingConfigs(Configs):
@@ -104,5 +106,3 @@ class DDPMTrainingConfigs(Configs):
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
-        if self.ckpt_path is not None:
-            view.logger.info(f"From checkpoint: {self.ckpt_path}")
