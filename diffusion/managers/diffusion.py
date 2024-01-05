@@ -85,7 +85,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             c = devices.move_to_device(condition, device) if condition is not None else None
             if c is not None:
                 assert isinstance(c, torch.Tensor), "Condition must be a valid `torch.Tensor` when given."
-            return self.sampling(num_images, imgs, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
+            return self.sampling(num_images, imgs, *args, condition=c, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
         except Exception as error:
             view.logger.error(error)
             runtime_error = errors.PredictionError()
