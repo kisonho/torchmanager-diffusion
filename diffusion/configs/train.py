@@ -66,8 +66,8 @@ class Configs(_Configs):
         view.logger.info(f"torchmanager={torchmanager.version}")
 
     def show_settings(self) -> None:
-        view.logger.info(f"Dataset: {self.data_dir}")
-        view.logger.info(f"Output Model: {self.output_model}")
+        view.logger.info(f"Data directory: {self.data_dir}")
+        view.logger.info(f"Output model: {self.output_model}")
         view.logger.info(f"Training settings: batch_size={self.batch_size}, epoch={self.epochs}, show_verbose={self.show_verbose}")
         view.logger.info(f"Device settings: device={self.device}, use_multi_gpus={self.use_multi_gpus}")
         view.logger.info(f"Diffusion model settings: time_steps={self.time_steps}")

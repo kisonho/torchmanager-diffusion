@@ -1,9 +1,26 @@
-import torch
 from torchmanager import callbacks, losses
+from torchmanager_core import argparse, torch, view
+from torchmanager_core.typing import Union
 
-import data
-import diffusion
-from diffusion.configs import DDPMTrainingConfigs as TrainingConfigs
+import data, diffusion
+from diffusion.configs import DDPMTrainingConfigs
+
+
+class TrainingConfigs(DDPMTrainingConfigs):
+    dataset: data.Datasets
+
+    def format_arguments(self) -> None:
+        super().format_arguments()
+        self.dataset = data.Datasets(self.dataset)
+
+    @staticmethod
+    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+        parser.add_argument("--dataset", type=str, help="The dataset used for training")
+        return DDPMTrainingConfigs.get_arguments(parser)
+
+    def show_settings(self) -> None:
+        view.logger.info(f"Dataset: {self.dataset}")
+        super().show_settings()
 
 
 def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
@@ -15,7 +32,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
     - Returns: A trained `diffusion.networks.Unet` model
     """
     # load datasets
-    training_dataset, validation_dataset, in_channels, _ = data.Datasets.CIFAR10.load(configs.data_dir, configs.batch_size, device=configs.device)
+    training_dataset, validation_dataset, in_channels, _ = configs.dataset.load(configs.data_dir, configs.batch_size, device=configs.device)
 
     # load model
     model = diffusion.networks.build_unet(in_channels)
