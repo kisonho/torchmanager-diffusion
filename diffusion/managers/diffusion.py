@@ -6,7 +6,6 @@ from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, Union, overload
 
 from diffusion.data import DiffusionData
-from diffusion.metrics import Diversity
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -249,86 +248,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         except KeyboardInterrupt:
             view.logger.info("Testing interrupted.")
             return {}
-        except Exception as error:
-            view.logger.error(error)
-            runtime_error = errors.TestingError()
-            raise runtime_error from error
-        finally:
-            # close progress bar
-            if progress_bar is not None:
-                progress_bar.close()
-
-            # empty cache
-            if empty_cache:
-                self.to(cpu)
-                self.model = self.raw_model
-                self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
-                devices.empty_cache()
-
-    def test_diversity(self, num_samples: int, testing_dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_range: Optional[Union[Sequence[int], range, reversed]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> float:
-        """
-        Calculate diversity of the model.
-
-        - Parameters:
-            - num_samples: Number of samples for each image.
-            - testing_dataset: A `torch.utils.data.Dataset` for testing.
-            - device: A `torch.device` for testing.
-            - empty_cache: A `bool` flag to empty cache after testing.
-            - use_multi_gpus: A `bool` flag to use multi-gpus for testing.
-            - show_verbose: A `bool` flag to show progress bar.
-        - Returns: A `float` of diversity for sampled images.
-        """
-        # initialize device
-        cpu, device, target_devices = devices.search(device)
-        if device == cpu and len(target_devices) < 2:
-            use_multi_gpus = False
-        devices.set_default(target_devices[0])
-
-        # initialize
-        batched_len = testing_dataset.batched_len if isinstance(testing_dataset, Dataset) else len(testing_dataset)
-        progress_bar = view.tqdm(total=batched_len) if show_verbose else None
-        diversity_fn = Diversity(sample_dim=1)
-
-        try:
-            # set module status and move to device
-            if use_multi_gpus:
-                self.data_parallel(target_devices)
-            self.to(device)
-            self.model.eval()
-
-            # loop over dataset
-            for x_test, _ in testing_dataset:
-                # move x_test, y_test to device
-                if not use_multi_gpus:
-                    x_test = devices.move_to_device(x_test, device)
-                assert isinstance(x_test, torch.Tensor), "The input must be a valid `torch.Tensor`."
-
-                # initialize sampling
-                samples: list[torch.Tensor] = []
-
-                # sampling images
-                for _ in range(num_samples):
-                    # sampling
-                    y = self.predict(x_test.shape[0], x_test.shape[1:], *args, condition=x_test, sampling_range=sampling_range, device=device, show_verbose=False, use_multi_gpus=use_multi_gpus, **kwargs)
-
-                    # append to samples
-                    y = [img.unsqueeze(0).unsqueeze(1) for img in y]
-                    y = torch.cat(y, dim=0)
-                    samples.append(y)
-
-                # calculate diversity
-                generated_samples = torch.cat(samples, dim=1)
-                diversity_fn(generated_samples, None)
-                r = diversity_fn.result
-
-                # update progress bar
-                if progress_bar is not None:
-                    progress_bar.set_postfix({"Diversity": r})
-                    progress_bar.update()
-            return float(diversity_fn.result)
-        except KeyboardInterrupt:
-            view.logger.info("Testing interrupted.")
-            return float(diversity_fn.result)
         except Exception as error:
             view.logger.error(error)
             runtime_error = errors.TestingError()

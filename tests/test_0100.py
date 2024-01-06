@@ -1,23 +1,29 @@
-import unittest
+import torch, unittest
 
 
 class Case0100(unittest.TestCase):
-    def test_configs(self):
-        import os
-        from diffusion.configs import TrainingConfigs as Configs
+    def test_fid(self):
+        from diffusion.metrics import FID
+        from torchvision.models import inception_v3
+        import ssl
 
-        configs = Configs.from_arguments(*[
-            "~/Downloads/Dataset/",
-            "tests/case0100/test.pth",
-            "-exp", "case_0100.exp",
-            "--replace_experiment",
-        ])
-        assert isinstance(configs, Configs), "The `configs` is not a valid `diffusion.configs.TrainingConfigs`."
+        # get feature extractor
+        ssl._create_default_https_context = ssl._create_unverified_context
+        inception = inception_v3(pretrained=True)
+        inception.fc = torch.nn.Identity()  # type: ignore
+        inception.eval()
+        fid_fn = FID(inception)
 
-        self.assertIsNone(configs.dataset)
-        self.assertEqual(configs.data_dir, os.path.normpath("~/Downloads/Dataset/"))
-        self.assertEqual(configs.output_model, os.path.normpath("tests/case0100/test.pth"))
-        self.assertEqual(configs.experiment, "case_0100.exp")
+        # generate fake data
+        input = torch.randn(16, 3, 256, 256)
+        target = torch.randn(16, 3, 256, 256)
+
+        # run lpips
+        _ = fid_fn(input, target)
+
+        # get result
+        result = float(fid_fn.result)
+        self.assertGreaterEqual(result, 0)
 
     def test_import(self):
         import data, diffusion
@@ -27,6 +33,39 @@ class Case0100(unittest.TestCase):
             self.assertGreaterEqual(diffusion.VERSION, Version("v0.1a"))
         except ImportError:
             pass
+
+    def test_lpips(self):
+        from diffusion.metrics import LPIPS
+        import ssl
+
+        ssl._create_default_https_context = ssl._create_unverified_context
+        lpips_fn = LPIPS()
+
+        # generate fake data
+        input = torch.randn(16, 3, 32, 32)
+        target = torch.randn(16, 3, 32, 32)
+
+        # run lpips
+        _ = lpips_fn(input, target)
+
+        # get result
+        result = float(lpips_fn.result)
+        self.assertGreaterEqual(result, 0)
+
+    def test_miou(self):
+        from diffusion.metrics import MIoU
+
+        # load metric
+        seg_model = torch.load("/Users/kisonho/Documents/Models/cityscapes.pth")
+        assert isinstance(seg_model, torch.nn.Module), "The pre-trained model is not a valid PyTorch model."
+        seg_model = seg_model.eval()
+        miou_fn = MIoU(seg_model)
+
+        # generate fake data
+        input = torch.randn(4, 3, 256, 256)
+        target = torch.randint(0, 19, size=(16, 1, 1024, 2048))
+        result = float(miou_fn(input, target))
+        self.assertGreaterEqual(result, 0)
 
     def test_scheduler(self) -> None:
         import torch
