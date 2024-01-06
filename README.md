@@ -3,15 +3,18 @@ The torchmanager implementation for diffusion models.
 
 ## Pre-requisites
 * Python >= 3.9
-* [PyTorch](https://pytorch.org)
+* [SciPy](https://www.scipy.org) >= 1.11.4
+* [PyTorch](https://pytorch.org) >= 2.0.1
+* [LPIPS](https://github.com/richzhang/PerceptualSimilarity)
 * [torchmanager](https://github.com/kisonho/torchmanager) >= 1.2
+* [einops](https://github.com/arogozhnikov/einops) >= 0.6.1
 
 ## Installation
 * PyPi: `pip install --pre torchmanager-diffusion`
 
 ## DDPM Manager Usage
 ### Train DDPM
-Direct compile `DDPMManager` to train a DDPM.
+Direct compile `DDPMManager` with a model, a beta space, and a number of time steps. Then, use `fit` method to train the model.
 
 ```python
 import diffusion
@@ -22,7 +25,7 @@ from torchmanager import callbacks, data, losses
 dataset: data.Dataset = ...
 
 # initialize model, beta_space, and time_steps
-model: diffusion.nn.DiffusionModule = ...
+model: torch.nn.Module = ...
 beta_space: diffusion.scheduling.BetaSpace = ...
 time_steps: int = ...
 
