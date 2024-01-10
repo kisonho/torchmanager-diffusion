@@ -44,10 +44,6 @@ class DDPMManager(DiffusionManager[Module]):
         self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
-    def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[Union[Sequence[int], reversed, range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
-        sampling_range = range(self.time_steps) if sampling_range is None else sampling_range
-        return super().sampling(num_images, x_t, condition, sampling_range=sampling_range, show_verbose=show_verbose)
-
     def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # initialize betas by given t
         betas_t = self.beta_space.sample_betas(data.t, data.x.shape)
