@@ -10,7 +10,7 @@ from diffusion.data import DiffusionData
 
 class DiffusionManager(_Manager[Module], abc.ABC):
     """
-    A torchmanager `Manager` for diffusion model
+    The basic `Manager` for diffusion models
 
     * Abstract class
     * Extends: `torchmanager.Manager`
@@ -113,7 +113,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - data: A `DiffusionData` object
             - i: An `int` of current time step
             - return_noise: A `bool` flag to return predicted noise
-        - Returns: A `torch.Tensor` of noised image
+        - Returns: A `torch.Tensor` of noised image if not returning noise or a `tuple` of noised image and predicted noise in `torch.Tensor` if returning noise
         """
         return NotImplemented
 

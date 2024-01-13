@@ -6,7 +6,7 @@ from .unet import Unet
 
 def build_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1) -> Unet:
     """
-    Build the UNET with given input channels
+    Build the UNET with given input channels. This is the UNET same as the one implemented with TensorFlow in DDPM paper.
 
     - Parameters:
         - in_channels: An `int` of input image channels
@@ -23,7 +23,7 @@ def build_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Con
 
 def build_unet_small(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 4, 8), dropout: float = 0.1) -> Unet:
     """
-    Build the UNET implemented in hugging face with given input channels
+    Build the UNET with given input channels. This is the same as the one implemented in hugging face.
 
     - Parameters:
         - in_channels: An `int` of input image channels

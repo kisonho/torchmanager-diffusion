@@ -14,6 +14,10 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
     """
     A manager for training a neural network to predict the score function of a stochastic differential equation.
 
+    * extends: `.diffusion.DiffusionManager`
+    * generic: `Module` and `SDEType`
+    * UserWarning: The `SDEManager` is still in beta testing with potential bugs.
+
     - Properties:
         - beta_space: A scheduled `BetaSpace`
         - is_continous: A `bool` flag of whether the SDE is continous or discrete
@@ -41,7 +45,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         self.beta_space = beta_space
         self.is_continous = is_continous
         self.sde = sde
-        view.warnings.warn("The `SDEManager` is still in beta with potential bugs.", category=UserWarning)
+        view.warnings.warn("The `SDEManager` is still in beta testing with potential bugs.", category=UserWarning)
 
         # check parameters
         if isinstance(self.sde, VPSDE) and self.beta_space is None:

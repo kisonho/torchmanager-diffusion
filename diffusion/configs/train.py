@@ -1,6 +1,5 @@
-import torchmanager
 from torchmanager.configs import Configs as _Configs
-from torchmanager_core import argparse, os, torch, view, _raise
+from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
 from torchmanager_core.typing import Optional, Union
 
 from diffusion.scheduling import BetaScheduler
@@ -63,7 +62,7 @@ class Configs(_Configs):
 
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
-        view.logger.info(f"torchmanager={torchmanager.version}")
+        view.logger.info(f"torchmanager={tm_version}")
 
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
