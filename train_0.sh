@@ -1,1 +1,0 @@
-python train.py cifar10 ~/Public/share/Data/Cifar10 ~/Documents/Models/diffusion/cifar10_linear_3.pth -b 128 -e 1000 -beta linear --beta_range 0.001 0.029 -exp cifar10_linear_3.exp --replace_experiment --show_verbose --device cuda:0

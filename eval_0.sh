@@ -1,1 +1,0 @@
-python eval.py cifar10 ~/Public/share/Data/Cifar10 -m experiments/cifar10_sigmoid.exp/checkpoints/last.model -b 1024 --show_verbose --device cuda:0 -exp cifar10_sigmoid_eval.exp --replace_experiment
