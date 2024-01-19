@@ -75,6 +75,9 @@ class BetaSpace(NamedTuple):
     def sample_betas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.betas, t, shape)
 
+    def sample_alphas(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
+        return _get_index_from_list(self.alphas, t, shape)
+
     def sample_posterior_variance(self, t: torch.Tensor, shape: torch.Size, /) -> torch.Tensor:
         return _get_index_from_list(self.posterior_variance, t, shape)
 
