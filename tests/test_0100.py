@@ -26,11 +26,11 @@ class Case0100(unittest.TestCase):
         self.assertGreaterEqual(result, 0)
 
     def test_import(self):
-        import data, diffusion
+        import diffusion
 
         try:
             from packaging.version import Version # type: ignore
-            self.assertGreaterEqual(diffusion.VERSION, Version("v0.1a"))
+            self.assertGreaterEqual(diffusion.VERSION, Version("v1.0"))
         except ImportError:
             pass
 

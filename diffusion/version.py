@@ -1,5 +1,4 @@
 from torchmanager_core import Version
 
-API = Version("v0.9")
-CURRENT = Version(f"{API}.2rc")
+API = CURRENT = Version("v1.0")
 DESCRIPTION = f"Torchmanager Implementation for Diffusion Model ({CURRENT})"
