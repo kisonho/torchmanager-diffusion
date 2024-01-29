@@ -10,7 +10,7 @@ The torchmanager implementation for diffusion models.
 * [einops](https://github.com/arogozhnikov/einops) >= 0.6.1
 
 ## Installation
-* PyPi: `pip install --pre torchmanager-diffusion`
+* PyPi: `pip install torchmanager-diffusion`
 
 ## DDPM Manager Usage
 ### Train DDPM
