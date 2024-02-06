@@ -81,7 +81,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         loss = self.compiled_losses(y, y_train) if self.loss_fn is not None and y_train is not None else None
         return y, loss
 
-    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         # sampling t
         if t is not None:
             t = t.to(data.device)
@@ -106,7 +106,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         sampling_range = range(self.time_steps) if sampling_range is None else sampling_range
         return super().sampling(num_images, x_t, condition, sampling_range=sampling_range, show_verbose=show_verbose)
 
-    def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE
