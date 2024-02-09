@@ -20,14 +20,25 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
 
     - Properties:
         - beta_space: A scheduled `BetaSpace`
+        - epsilon: A `float` of the epsilon value for precision of continuous space
         - is_continous: A `bool` flag of whether the SDE is continous or discrete
         - sde: The SDE in `SDEType` to train
     """
+    __epsilon: float
     beta_space: Optional[BetaSpace]
     is_continous: bool
     sde: SDEType
 
-    def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    @property
+    def epsilon(self) -> float:
+        """A `float` of the epsilon value"""
+        return self.__epsilon
+    
+    @epsilon.setter
+    def epsilon(self, value: float) -> None:
+        assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
+
+    def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, epsilon: float = 1e-5, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 
@@ -36,6 +47,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             - sde: The SDE in `SDEType` to train
             - time_steps: A `int` of the number of time steps
             - beta_space: A scheduled `BetaSpace`
+            - epsilon: A `float` of the epsilon value for precision of continuous space
             - is_continous: A `bool` flag of whether the SDE is continous or discrete
             - optimizer: A `torch.optim.Optimizer` to optimize the model
             - loss_fn: A `torchmanager.losses.Loss` or a `dict` of `torchmanager.losses.Loss` to calculate loss
@@ -43,6 +55,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         """
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
+        self.epsilon = epsilon
         self.is_continous = is_continous
         self.sde = sde
         view.warnings.warn("The `SDEManager` is still in beta testing with potential bugs.", category=UserWarning)
@@ -55,7 +68,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         # Scale neural network output by standard deviation and flip sign
         # For VE-trained models, t=0 corresponds to the highest noise level
         if isinstance(self.sde, SubVPSDE) or (self.is_continous and isinstance(self.sde, VPSDE)):
-            t = x_train.t * 999
+            t = x_train.t * (self.sde.N - 1)
             _, std = self.sde.marginal_prob(torch.zeros_like(x_train.x), x_train.t)
         elif isinstance(self.sde, VPSDE):
             assert self.beta_space is not None, "Beta space is required for VPSDE."
@@ -86,9 +99,11 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         if t is not None:
             t = t.to(data.device)
         elif self.beta_space is not None:
-            t = self.beta_space.sample(data.shape[0], self.time_steps)
+            t = self.beta_space.sample(data.shape[0], self.time_steps) / self.time_steps
         else:
-            t = torch.randint(0, self.time_steps, (data.shape[0],), device=data.device).long()
+            t = torch.rand((data.shape[0],), device=data.device)
+            t /= self.epsilon
+            t = t.long().float() * self.epsilon
 
         # add noise
         z = torch.randn_like(data, device=t.device)
@@ -110,10 +125,12 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE
-            timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
+            timestep = ((data.t / self.time_steps) * (self.sde.N - 1) / self.sde.T).long()
             sigma = self.sde.discrete_sigmas[timestep]
             adjacent_sigma = torch.where(timestep == 0, torch.zeros_like(data.t), self.sde.discrete_sigmas.to(data.t.device)[timestep - 1])
-            predicted_noise, _ = score, _ = self.forward(data)
+            m_t = timestep / self.time_steps
+            x = DiffusionData(data.x, m_t, condition=data.condition)
+            predicted_noise, _ = score, _ = self.forward(x)
             x_mean = data.x + score * (sigma ** 2 - adjacent_sigma ** 2)[:, None, None, None]
             std = torch.sqrt((adjacent_sigma ** 2 * (sigma ** 2 - adjacent_sigma ** 2)) / (sigma ** 2))
             noise = torch.randn_like(data.x)
@@ -121,9 +138,11 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         elif isinstance(self.sde, VPSDE):
             # The ancestral sampling predictor for VESDE
             assert self.beta_space is not None, "Beta space is required for VPSDE."
-            timestep = (data.t * (self.sde.N - 1) / self.sde.T).long()
+            timestep = ((data.t / self.time_steps) * (self.sde.N - 1) / self.sde.T).long()
             beta = self.beta_space.sample_betas(timestep, data.x.shape)
-            predicted_noise, _ = score, _ = self.forward(data)
+            m_t = timestep / self.time_steps
+            x = DiffusionData(data.x, m_t, condition=data.condition)
+            predicted_noise, _ = score, _ = self.forward(x)
             x_mean = (data.x + beta[:, None, None, None] * score) / torch.sqrt(1. - beta)[:, None, None, None]
             noise = torch.randn_like(data.x)
             y = x_mean + torch.sqrt(beta)[:, None, None, None] * noise
