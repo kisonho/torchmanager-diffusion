@@ -47,10 +47,33 @@ class DiffusionModule(TimedModule, Generic[Module], abc.ABC):
         - sampling_step: The sampling step of diffusion model
     """
     model: Module
+    time_steps: int
 
-    def __init__(self, model: Module) -> None:
+    @property
+    def sampling_range(self) -> range:
+        return range(1, self.time_steps + 1)
+
+    def __init__(self, model: Module, time_steps: int) -> None:
         super().__init__()
         self.model = model
+        self.time_steps = time_steps
+
+    def __call__(self, x_in: TimedData, *args: Any, sampling: bool = False, **kwargs: Any) -> Any:
+        if sampling:
+            # initialize
+            x_t = x_in.x
+
+            # sampling loop time step
+            for i in reversed(self.sampling_range):
+                # fetch data
+                t = torch.full((x_in.x.shape[0],), i, dtype=torch.long, device=x_t.device)
+
+                # append to predicitions
+                x = DiffusionData(x_t, t, condition=x_in.condition)
+                y = self.sampling_step(x, i)
+                x_t = y
+        else:
+            return super().__call__(x_in, *args, **kwargs)
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         return self.model(*args, **kwargs)

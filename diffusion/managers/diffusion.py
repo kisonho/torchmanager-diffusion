@@ -287,6 +287,19 @@ class Manager(DiffusionManager[DM]):
     * extends: `DiffusionManager`
     * Generic: `DM`
     """
+    model: DM
+
+    @property
+    def time_steps(self) -> int:
+        return self.model.time_steps
+
+    @time_steps.setter
+    def time_steps(self, time_steps: int) -> None:
+        self.model.time_steps = time_steps
+
+    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+        super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
+
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)

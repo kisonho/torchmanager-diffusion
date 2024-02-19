@@ -18,8 +18,8 @@ class DDPM(DiffusionModule[Module]):
     """
     beta_space: BetaSpace
 
-    def __init__(self, model: Module, beta_space: BetaSpace) -> None:
-        super().__init__(model)
+    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int) -> None:
+        super().__init__(model, time_steps)
         self.beta_space = beta_space
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
