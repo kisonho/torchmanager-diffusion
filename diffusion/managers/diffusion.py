@@ -277,7 +277,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return super().test_step(x_test_noise, noise.to(y_test.device))
 
 
-DM = TypeVar('DM', bound=nn.DiffusionModel)
+DM = TypeVar('DM', bound=nn.DiffusionModule)
 
 
 class Manager(DiffusionManager[DM]):
