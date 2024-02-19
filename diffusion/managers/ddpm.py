@@ -10,8 +10,8 @@ from .diffusion import DiffusionManager
 class DDPMManager(DiffusionManager[Module]):
     """
     Main DDPM Manager
-    
-    - Parameters:
+
+    - Properties:
         - beta_space: A scheduled `BetaSpace`
     """
     beta_space: BetaSpace

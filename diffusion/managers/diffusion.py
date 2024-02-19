@@ -3,8 +3,9 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, Union, overload
+from torchmanager_core.typing import Any, Iterable, Module, Optional, Sequence, TypeVar, Union, overload
 
+from diffusion import nn
 from diffusion.data import DiffusionData
 
 
@@ -19,7 +20,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         - time_steps: An `int` of total time steps
     - Methods to implement:
         - forward_diffusion: Forward pass of diffusion model, sample noises
-        - sampling: Samples a given number of images
+        - sampling_step: Sampling step of diffusion model
     """
     time_steps: int
 
@@ -274,3 +275,22 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
         x_test_noise, noise = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
         return super().test_step(x_test_noise, noise.to(y_test.device))
+
+
+DM = TypeVar('DM', bound=nn.DiffusionModel)
+
+
+class Manager(DiffusionManager[DM]):
+    """
+    The manager that handles diffusion models
+
+    * extends: `DiffusionManager`
+    * Generic: `DM`
+    """
+    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+        # initialize
+        t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
+        return self.model.forward_diffusion(data, t, condition=condition)
+
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        return self.model.sampling_step(data, i, return_noise=return_noise)
