@@ -3,7 +3,7 @@ from functools import partial
 from typing import Optional, Type
 
 from diffusion.nn import Attention, ConvNextBlock, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings, TimedModule
-from diffusion.nn.protocols import TimedData
+from diffusion.nn.diffusion.protocols import TimedData
 
 
 class Unet(TimedModule):
