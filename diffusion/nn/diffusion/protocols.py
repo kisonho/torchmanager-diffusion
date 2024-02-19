@@ -1,5 +1,5 @@
-from torchmanager_core import torch
-from torchmanager_core.typing import Optional, Protocol
+import torch
+from typing import Optional, Protocol
 
 
 class TimedData(Protocol):

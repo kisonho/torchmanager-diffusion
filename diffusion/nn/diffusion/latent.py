@@ -1,9 +1,10 @@
-from torchmanager_core import abc, torch
-from torchmanager_core.typing import Generic, Module, Optional, TypeVar, Union, overload
+import abc, torch
+from typing import Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from .diffusion import DiffusionModule
 
+Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=Optional[torch.nn.Module])
 D = TypeVar('D', bound=Optional[torch.nn.Module])
 

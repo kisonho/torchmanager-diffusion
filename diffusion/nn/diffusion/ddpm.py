@@ -1,9 +1,11 @@
-from torchmanager_core import torch
-from torchmanager_core.typing import Module, Optional, Union
+import torch
+from typing import Optional, TypeVar, Union
 
 from diffusion.data import DiffusionData
 from diffusion.scheduling.space import BetaSpace
 from .diffusion import DiffusionModule
+
+Module = TypeVar('Module', bound=torch.nn.Module)
 
 
 class DDPM(DiffusionModule[Module]):

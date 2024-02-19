@@ -1,8 +1,10 @@
-from torchmanager_core import abc, torch
-from torchmanager_core.typing import Any, Generic, Module, Optional, Union, overload
+import abc, torch
+from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from .protocols import TimedData
+
+Module = TypeVar('Module', bound=torch.nn.Module)
 
 
 class TimedModule(torch.nn.Module, abc.ABC):
