@@ -4,8 +4,6 @@ from typing import Any, Generic, Optional, TypeVar, Union, overload
 from diffusion.data import DiffusionData
 from .protocols import TimedData
 
-Module = TypeVar('Module', bound=torch.nn.Module)
-
 
 class TimedModule(torch.nn.Module, abc.ABC):
     """
@@ -34,11 +32,14 @@ class TimedModule(torch.nn.Module, abc.ABC):
         return NotImplemented
 
 
-class DiffusionModule(TimedModule, Generic[Module], abc.ABC):
+Module = TypeVar('Module', bound=TimedModule)
+
+
+class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
     """
     The diffusion model that has the forward diffusion and sampling step algorithm implemented
 
-    * extends: `TimedModule`
+    * extends: `torch.nn.Module`
     * Abstract class
     * Generic: `Module`
 
@@ -60,7 +61,7 @@ class DiffusionModule(TimedModule, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def __call__(self, x_in: TimedData, *args: Any, sampling: bool = False, **kwargs: Any) -> Any:
+    def __call__(self, x_in: TimedData, sampling: bool = False) -> Any:
         if sampling:
             # initialize
             x_t = x_in.x
@@ -75,7 +76,7 @@ class DiffusionModule(TimedModule, Generic[Module], abc.ABC):
                 y = self.sampling_step(x, i)
                 x_t = y
         else:
-            return super().__call__(x_in, *args, **kwargs)
+            return super().__call__(x_in)
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         return self.model(*args, **kwargs)

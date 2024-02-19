@@ -2,16 +2,15 @@ from torch.utils.data import DataLoader
 from torchmanager.data import Dataset
 from torchmanager import losses, metrics
 from torchmanager_core import devices, torch, view
-from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Optional, Sequence, TypeVar, Union, overload
 
 from diffusion import DiffusionData, nn
 from .diffusion import DiffusionManager
 
-E = TypeVar('E', bound=Optional[torch.nn.Module])
-D = TypeVar('D', bound=Optional[torch.nn.Module])
+Module = TypeVar('Module', bound=nn.diffusion.LatentDiffusionModule)
 
 
-class LDMManager(DiffusionManager[nn.diffusion.LatentDiffusionModule[Module, E, D]]):
+class LDMManager(DiffusionManager[Module]):
     """
     Diffusion manager for diffusion models under latent space as an option.
 
@@ -21,9 +20,9 @@ class LDMManager(DiffusionManager[nn.diffusion.LatentDiffusionModule[Module, E, 
     - Properties:
         - model: An optional target `LatentDiffusionModule` to be trained
     """
-    model: nn.diffusion.LatentDiffusionModule[Module, E, D]
+    model: Module
 
-    def __init__(self, model: nn.diffusion.LatentDiffusionModule[Module, E, D], time_steps: int, *, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    def __init__(self, model: Module, time_steps: int, *, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 

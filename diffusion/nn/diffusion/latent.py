@@ -2,9 +2,9 @@ import abc, torch
 from typing import Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
-from .diffusion import DiffusionModule
+from .diffusion import DiffusionModule, TimedModule
 
-Module = TypeVar('Module', bound=torch.nn.Module)
+Module = TypeVar('Module', bound=TimedModule)
 E = TypeVar('E', bound=Optional[torch.nn.Module])
 D = TypeVar('D', bound=Optional[torch.nn.Module])
 
