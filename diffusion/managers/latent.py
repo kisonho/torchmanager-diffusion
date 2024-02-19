@@ -20,7 +20,7 @@ class LDMManager(DiffusionManager[Module]):
     - Properties:
         - model: An optional target `LatentDiffusionModule` to be trained
     """
-    model: Module
+    model: Union[Module, torch.nn.DataParallel[Module]]
 
     def __init__(self, model: Module, time_steps: int, *, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
@@ -90,8 +90,8 @@ class LDMManager(DiffusionManager[Module]):
         '''
         # enter latent space
         assert condition is not None, 'Condition is required for sampling.'
-        z_t = self.model.encode(x_t)
-        z_condition = self.model.encode(condition)
+        z_t = self.model(x_t, mode=nn.diffusion.LatentMode.ENCODE)
+        z_condition = self.model(condition, mode=nn.diffusion.LatentMode.ENCODE)
 
         # sampling
         if fast_sampling:
@@ -105,7 +105,7 @@ class LDMManager(DiffusionManager[Module]):
         # exit latent space
         z_0_list = [img.unsqueeze(0) for img in z_0_list]
         z_0 = torch.cat(z_0_list, dim=0)
-        x_0 = self.model.decode(z_0)
+        x_0 = self.model(z_0, mode=nn.diffusion.LatentMode.DECODE)
         return [img for img in x_0]
 
     def data_parallel(self, target_devices: list[torch.device]) -> bool:
@@ -145,8 +145,8 @@ class LDMManager(DiffusionManager[Module]):
 
     def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor) -> dict[str, float]:
         # enter latent space
-        z_x = self.model.encode(x_train)
-        z_y = self.model.encode(y_train)
+        z_x = self.model(x_train, mode=nn.diffusion.LatentMode.ENCODE)
+        z_y = self.model(y_train, mode=nn.diffusion.LatentMode.ENCODE)
 
         # forward diffusion model
         return super().train_step(z_x, z_y)
@@ -181,8 +181,8 @@ class LDMManager(DiffusionManager[Module]):
 
     def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
         # enter latent space
-        z_x = self.model.encode(x_test)
-        z_y = self.model.encode(y_test)
+        z_x = self.model(x_test, mode=nn.diffusion.LatentMode.ENCODE)
+        z_y = self.model(y_test, mode=nn.diffusion.LatentMode.ENCODE)
 
         # forward diffusion model
         return super().test_step(z_x, z_y)

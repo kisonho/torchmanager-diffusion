@@ -1,5 +1,6 @@
 import abc, torch
-from typing import Generic, Optional, TypeVar, Union, overload
+from enum import Enum
+from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from .diffusion import DiffusionModule, TimedModule
@@ -7,6 +8,17 @@ from .diffusion import DiffusionModule, TimedModule
 Module = TypeVar('Module', bound=TimedModule)
 E = TypeVar('E', bound=Optional[torch.nn.Module])
 D = TypeVar('D', bound=Optional[torch.nn.Module])
+
+
+class LatentMode(Enum):
+    """
+    The enumeration of the latent forward mode
+
+    * extends: `Enum`
+    """
+    ENCODE = 'encode'
+    DECODE = 'decode'
+    FORWARD = 'forward'
 
 
 class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.ABC):
@@ -73,3 +85,13 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         - Returns: A `torch.Tensor` of the sampled image or a `tuple` of `torch.Tensor` of the sampled image and `torch.Tensor` of the noise
         '''
         raise NotImplementedError('Fast sampling step method has not been implemented yet.')
+
+    def __call__(self, *args: Any, mode: LatentMode = LatentMode.FORWARD, **kwargs: Any) -> Any:
+        if mode == LatentMode.ENCODE:
+            return self.encode(*args, **kwargs)
+        elif mode == LatentMode.DECODE:
+            return self.decode(*args, **kwargs)
+        elif mode == LatentMode.FORWARD:
+            return super().__call__(*args, **kwargs)
+        else:
+            raise NotImplementedError(f'Latent forward mode {mode} is not implemented.')
