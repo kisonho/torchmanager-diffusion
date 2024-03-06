@@ -45,6 +45,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     - Properties:
         - model: The model to use for diffusion in `Module`
+        - time_steps: The total time steps of diffusion model
     - method to implement:
         - forward_diffusion: The forward pass of diffusion model, sample noises
         - sampling_step: The sampling step of diffusion model
@@ -76,10 +77,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
                 y = self.sampling_step(x, i)
                 x_t = y
         else:
-            return super().__call__(x_in)
-
-    def forward(self, *args: Any, **kwargs: Any) -> Any:
-        return self.model(*args, **kwargs)
+            return self.model(x_in)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:

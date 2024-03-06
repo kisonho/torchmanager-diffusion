@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
+from diffusion.nn.diffusion.protocols import TimedData
 from .diffusion import DiffusionModule, TimedModule
 
 Module = TypeVar('Module', bound=TimedModule)
@@ -86,12 +87,29 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         '''
         raise NotImplementedError('Fast sampling step method has not been implemented yet.')
 
-    def __call__(self, *args: Any, mode: LatentMode = LatentMode.FORWARD, **kwargs: Any) -> Any:
+    @overload
+    def __call__(self, x_in: TimedData, mode: LatentMode = LatentMode.FORWARD, sampling: bool = False) -> Any:
+        ...
+
+    @overload
+    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.DECODE) -> torch.Tensor:
+        ...
+
+    @overload
+    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.ENCODE) -> torch.Tensor:
+        ...
+
+    def __call__(self, x_in: Union[torch.Tensor, TimedData], mode: LatentMode = LatentMode.FORWARD, sampling: bool = False) -> Any:
         if mode == LatentMode.ENCODE:
-            return self.encode(*args, **kwargs)
+            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to encode, got {type(x_in)}.'
+            assert sampling is not True, 'Sampling flag must be `False` to encode.'
+            return self.encode(x_in)
         elif mode == LatentMode.DECODE:
-            return self.decode(*args, **kwargs)
+            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to decode, got {type(x_in)}.'
+            assert sampling is not True, 'Sampling flag must be `False` to decode.'
+            return self.decode(x_in)
         elif mode == LatentMode.FORWARD:
-            return super().__call__(*args, **kwargs)
+            assert not isinstance(x_in, torch.Tensor), f'Input data must be a `TimedData` to forward, got {type(x_in)}.'
+            return super().__call__(x_in, sampling=sampling)
         else:
             raise NotImplementedError(f'Latent forward mode {mode} is not implemented.')
