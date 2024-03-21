@@ -1,6 +1,6 @@
 from torchmanager import losses, metrics
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, Module, Optional, Sequence, Union
+from torchmanager_core.typing import Module, Optional, Union
 
 from diffusion.data import DiffusionData
 from diffusion.scheduling import BetaSpace
