@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Iterable, Module, Optional, Union, overload
+from torchmanager_core.typing import Any, Module, Optional, Sequence, Union, overload
 
 from diffusion.data import DiffusionData
 
@@ -57,7 +57,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Iterable[int], reversed,range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         # find available device
         cpu, device, target_devices = devices.search(device)
         if device == cpu and len(target_devices) < 2:
@@ -65,7 +65,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         devices.set_default(target_devices[0])
 
         # initialize and format parameters
-        image_size = tuple(image_size) if isinstance(image_size, Iterable) else (3, image_size, image_size)
+        image_size = image_size if isinstance(image_size, tuple) else (3, image_size, image_size)
         assert image_size[0] > 0 and image_size[1] > 0, _raise(ValueError(f"Image size must be positive numbers, got {image_size}."))
         assert num_images > 0, _raise(ValueError(f"Number of images must be a positive number, got {num_images}."))
         imgs = torch.randn([num_images] + list(image_size)) if noises is None else noises
@@ -118,7 +118,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Iterable[int], reversed,range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -126,16 +126,16 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - num_images: An `int` of number of images to generate
             - x_t: A `torch.Tensor` of the image at T step
             - condition: An optional `torch.Tensor` of the condition to generate images
-            - sampling_range: An optional `Iterable[int]`, `range`, or `reversed` of the range of time steps to sample
-            - start_index: An optional `int` of the start index of reversed time step
-            - end_index: An `int` of the end index of reversed time step
+            - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
+            - start_index: An optional `int` of the start index of the time step
+            - end_index: An `int` of the end index of the time step
             - show_verbose: A `bool` flag to show the progress bar during testing
         - Retruns: A `list` of `torch.Tensor` generated results
         '''
         # initialize
         imgs = x_t
         progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
-        sampling_range = reversed(range(1, self.time_steps+1)) if sampling_range is None else sampling_range
+        sampling_range = range(self.time_steps, 0, -1) if sampling_range is None else sampling_range
 
         # sampling loop time step
         for i in sampling_range:
@@ -155,7 +155,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return [img for img in imgs]
 
     @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Iterable[int], range, reversed]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         """
         Test target model
 
@@ -164,7 +164,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - *args: An optional `tuple` of `Any` of additional arguments for sampling
             - sampling_images: A `bool` flag to sample images during testing
             - sampling_shape: An optional `int` or `tuple` of `int` of the shape of sampled images
-            - sampling_range: An optional `Iterable[int]`, `range`, or `reversed` of the range of time steps to sample
+            - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
             - device: An optional `torch.device` to test on if not using multi-GPUs or an optional default `torch.device` for testing otherwise
             - empyt_cache: A `bool` flag to empty cache after testing
             - use_multi_gpus: A `bool` flag to use multi gpus during testing
