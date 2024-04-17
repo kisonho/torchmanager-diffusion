@@ -134,8 +134,8 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         '''
         # initialize
         imgs = x_t
-        progress_bar = view.tqdm(desc='Sampling loop time step', total=self.time_steps) if show_verbose else None
         sampling_range = range(self.time_steps, 0, -1) if sampling_range is None else sampling_range
+        progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
 
         # sampling loop time step
         for i in sampling_range:
@@ -146,10 +146,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             x = DiffusionData(imgs, t, condition=condition)
             y = self.sampling_step(x, i)
             imgs = y.to(imgs.device)
-
-            # update progress bar
-            if progress_bar is not None:
-                progress_bar.update()
+            progress_bar.update()
 
         # reset model and loss
         return [img for img in imgs]
