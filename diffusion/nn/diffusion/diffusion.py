@@ -77,7 +77,10 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
                 y = self.sampling_step(x, i)
                 x_t = y
         else:
-            return self.model(x_in)
+            return super().__call__(x_in)
+
+    def forward(self, data: DiffusionData, /) -> Any:
+        return self.model(data)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:

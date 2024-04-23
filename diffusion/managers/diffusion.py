@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Module, Optional, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, overload
 
 from diffusion import nn
 from diffusion.data import DiffusionData
