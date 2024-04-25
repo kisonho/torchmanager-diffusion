@@ -303,6 +303,9 @@ class Manager(DiffusionManager[DM]):
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         return self.model.forward_diffusion(data, t, condition=condition)
 
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+        return self.model.sampling(num_images, x_t, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
+
     @overload
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
         ...

@@ -1,5 +1,6 @@
 import abc, torch
-from typing import Any, Generic, Optional, TypeVar, Union, overload
+from torchmanager_core import view
+from typing import Any, Generic, Optional, Sequence, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from .protocols import TimedData
@@ -62,23 +63,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def __call__(self, x_in: TimedData, sampling: bool = False) -> Any:
-        if sampling:
-            # initialize
-            x_t = x_in.x
-
-            # sampling loop time step
-            for i in reversed(self.sampling_range):
-                # fetch data
-                t = torch.full((x_in.x.shape[0],), i, dtype=torch.long, device=x_t.device)
-
-                # append to predicitions
-                x = DiffusionData(x_t, t, condition=x_in.condition)
-                y = self.sampling_step(x, i)
-                x_t = y
-        else:
-            return super().__call__(x_in)
-
     def forward(self, data: DiffusionData, /) -> Any:
         return self.model(data)
 
@@ -94,6 +78,40 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and noises in `torch.Tensor`
         """
         return NotImplemented
+
+    @torch.no_grad()
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+        '''
+        Samples a given number of images
+
+        - Parameters:
+            - num_images: An `int` of number of images to generate
+            - x_t: A `torch.Tensor` of the image at T step
+            - condition: An optional `torch.Tensor` of the condition to generate images
+            - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
+            - start_index: An optional `int` of the start index of the time step
+            - end_index: An `int` of the end index of the time step
+            - show_verbose: A `bool` flag to show the progress bar during testing
+        - Retruns: A `list` of `torch.Tensor` generated results
+        '''
+        # initialize
+        imgs = x_t
+        sampling_range = range(self.time_steps, 0, -1) if sampling_range is None else sampling_range
+        progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
+
+        # sampling loop time step
+        for i in sampling_range:
+            # fetch data
+            t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
+
+            # append to predicitions
+            x = DiffusionData(imgs, t, condition=condition)
+            y = self.sampling_step(x, i)
+            imgs = y.to(imgs.device)
+            progress_bar.update()
+
+        # reset model and loss
+        return [img for img in imgs]
 
     @overload
     @abc.abstractmethod
