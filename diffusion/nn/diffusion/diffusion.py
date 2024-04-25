@@ -63,7 +63,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def forward(self, data: DiffusionData, /) -> Any:
+    def forward(self, data: DiffusionData, /) -> torch.Tensor:
         return self.model(data)
 
     @abc.abstractmethod
