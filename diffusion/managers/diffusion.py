@@ -285,7 +285,7 @@ class Manager(DiffusionManager[DM]):
     * extends: `DiffusionManager`
     * Generic: `DM`
     """
-    model: DM
+    model: Union[DM, nn.diffusion.DiffusionDataParallel[DM]]
 
     @property
     def time_steps(self) -> int:
@@ -297,6 +297,12 @@ class Manager(DiffusionManager[DM]):
 
     def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
+
+    def data_parallel(self, target_devices: list[torch.device]) -> bool:
+        use_multi_gpus = super().data_parallel(target_devices)
+        if use_multi_gpus:
+            self.model, use_multi_gpus = devices.data_parallel(self.model, target_devices, parallel_type=nn.diffusion.DiffusionDataParallel)
+        return use_multi_gpus
 
     def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         # initialize
