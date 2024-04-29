@@ -266,12 +266,14 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def train_step(self, x_train: Any, y_train: Any) -> dict[str, float]:
-        x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+    def train_step(self, x_train: torch.Tensor, y_train: Any) -> dict[str, float]:
+        x_0 = devices.move_to_device(y_train, x_train.device)
+        x_train_noise, objective = self.forward_diffusion(x_0, condition=x_train)
         return super().train_step(x_train_noise, objective)
 
-    def test_step(self, x_test: Any, y_test: Any) -> dict[str, float]:
-        x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+    def test_step(self, x_test: torch.Tensor, y_test: Any) -> dict[str, float]:
+        x_0 = devices.move_to_device(y_test, x_test.device)
+        x_test_noise, objective = self.forward_diffusion(x_0, condition=x_test)
         return super().test_step(x_test_noise, objective)
 
 
@@ -298,10 +300,9 @@ class Manager(DiffusionManager[DM]):
     def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
 
-    def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
+    def forward_diffusion(self, data: Any, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         # initialize
-        t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
-        return self.model.forward_diffusion(data, t, condition=condition)
+        return self.model(data, condition=condition, mode=nn.diffusion.DiffusionMode.FORWARD_DIFFUSION, t=t)
 
     def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         return self.model.sampling(num_images, x_t, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)

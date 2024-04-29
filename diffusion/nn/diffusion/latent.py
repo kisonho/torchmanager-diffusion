@@ -1,9 +1,9 @@
 import abc, torch
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar, Union, overload
+from torchmanager_core import view
+from typing import Any, Generic, Optional, Sequence, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
-from diffusion.nn.diffusion.protocols import TimedData
 from .diffusion import DiffusionModule, TimedModule
 
 Module = TypeVar('Module', bound=TimedModule)
@@ -53,6 +53,9 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         if self.decoder is not None:
             self.decoder.eval()
 
+    def __call__(self, *args: Any, latent_mode: LatentMode = LatentMode.FORWARD, **kwds: Any) -> Any:
+        return super().__call__(*args, latent_mode=latent_mode, **kwds)
+
     @torch.no_grad()
     def decode(self, z: torch.Tensor) -> torch.Tensor:
         if self.decoder is None:
@@ -87,29 +90,84 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         '''
         raise NotImplementedError('Fast sampling step method has not been implemented yet.')
 
-    @overload
-    def __call__(self, x_in: TimedData, mode: LatentMode = LatentMode.FORWARD, sampling: bool = False) -> Any:
-        ...
+    @torch.no_grad()
+    def fast_sampling(self, num_images: int, x_t: torch.Tensor, sampling_range: Sequence[int], condition: Optional[torch.Tensor] = None, *, show_verbose: bool = False) -> list[torch.Tensor]:
+        '''
+        Samples a given number of images using fast sampling algorithm.
 
-    @overload
-    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.DECODE) -> torch.Tensor:
-        ...
+        - Parameters:
+            - num_images: An `int` of number of images to generate
+            - x_t: A `torch.Tensor` of the image at T step
+            - sampling_range: An `Iterable[int]` of the range of time steps to sample
+            - condition: An optional `torch.Tensor` of the condition to generate images
+            - start_index: An optional `int` of the start index of reversed time step
+            - end_index: An `int` of the end index of reversed time step
+            - show_verbose: A `bool` flag to show the progress bar during testing
+        - Retruns: A `list` of `torch.Tensor` generated results
+        '''
+        # initialize
+        progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range)) if show_verbose else None
 
-    @overload
-    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.ENCODE) -> torch.Tensor:
-        ...
+        # sampling loop time step
+        for i, tau in enumerate(sampling_range):
+            # fetch data
+            t = torch.full((num_images,), tau, dtype=torch.long, device=x_t.device)
+            tau_minus_one = sampling_range[i+1] if i < len(sampling_range) - 1 else 0
 
-    def __call__(self, x_in: Union[torch.Tensor, TimedData], mode: LatentMode = LatentMode.FORWARD, sampling: bool = False) -> Any:
-        if mode == LatentMode.ENCODE:
-            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to encode, got {type(x_in)}.'
-            assert sampling is not True, 'Sampling flag must be `False` to encode.'
-            return self.encode(x_in)
-        elif mode == LatentMode.DECODE:
-            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to decode, got {type(x_in)}.'
-            assert sampling is not True, 'Sampling flag must be `False` to decode.'
-            return self.decode(x_in)
-        elif mode == LatentMode.FORWARD:
-            assert not isinstance(x_in, torch.Tensor), f'Input data must be a `TimedData` to forward, got {type(x_in)}.'
-            return super().__call__(x_in, sampling=sampling)
+            # append to predicitions
+            x = DiffusionData(x_t, t, condition=condition)
+            y = self.fast_sampling_step(x, tau, tau_minus_one)
+            assert isinstance(y, torch.Tensor), "The output must be a valid `torch.Tensor`."
+            x_t = y.to(x_t.device)
+
+            # update progress bar
+            if progress_bar is not None:
+                progress_bar.update()
+
+        # return final image
+        x_0 = x_t
+        return [img for img in x_0]
+
+    def forward(self, *args: Any, latent_mode: LatentMode = LatentMode.FORWARD, **kwargs: Any) -> Any:
+        if latent_mode == LatentMode.ENCODE:
+            return self.encode(*args, **kwargs)
+        elif latent_mode == LatentMode.DECODE:
+            return self.decode(*args, **kwargs)
+        elif latent_mode == LatentMode.FORWARD:
+            return super().forward(*args, **kwargs)
         else:
-            raise NotImplementedError(f'Latent forward mode {mode} is not implemented.')
+            raise NotImplementedError(f"Mode {latent_mode} is not implemented for diffusion model")
+
+    def sampling(self, num_images: int, x_t: torch.Tensor, /, *, condition: Optional[torch.Tensor] = None, fast_sampling: bool = False, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+        '''
+        Samples a given number of images
+
+        - Parameters:
+            - num_images: An `int` of number of images to generate
+            - x_t: A `torch.Tensor` of the image at T step
+            - condition: An optional `torch.Tensor` of the condition to generate images
+            - start_index: An optional `int` of the start index of reversed time step
+            - end_index: An `int` of the end index of reversed time step
+            - show_verbose: A `bool` flag to show the progress bar during testing
+        - Retruns: A `list` of `torch.Tensor` generated results
+        '''
+        # enter latent space
+        assert condition is not None, 'Condition is required for sampling.'
+        print(self.encoder)
+        z_t = self(x_t, mode=LatentMode.ENCODE)
+        z_condition = self(condition, mode=LatentMode.ENCODE)
+
+        # sampling
+        if fast_sampling:
+            assert sampling_range is not None, 'Sampling range is required for fast sampling.'
+            sampling_steps = list(sampling_range)
+            z_0_list = self.fast_sampling(num_images, z_t, sampling_steps, condition=z_condition, show_verbose=show_verbose)
+        else:
+            assert not isinstance(sampling_range, list), 'Sampling range must be a `range` or `reversed` for original sampling.'
+            z_0_list = super().sampling(num_images, z_t, condition=z_condition, sampling_range=sampling_range, show_verbose=show_verbose)
+
+        # exit latent space
+        z_0_list = [img.unsqueeze(0) for img in z_0_list]
+        z_0 = torch.cat(z_0_list, dim=0)
+        x_0 = self(z_0, mode=LatentMode.DECODE)
+        return [img for img in x_0]
