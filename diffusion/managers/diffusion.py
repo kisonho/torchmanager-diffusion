@@ -7,6 +7,7 @@ from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, U
 
 from diffusion import nn
 from diffusion.data import DiffusionData
+from .protocols import Diffusable
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -285,7 +286,7 @@ class Manager(DiffusionManager[DM]):
     * extends: `DiffusionManager`
     * Generic: `DM`
     """
-    model: Union[DM, nn.diffusion.DiffusionDataParallel[DM]]
+    model: Diffusable
 
     @property
     def time_steps(self) -> int:
@@ -301,6 +302,7 @@ class Manager(DiffusionManager[DM]):
     def data_parallel(self, target_devices: list[torch.device]) -> bool:
         use_multi_gpus = super().data_parallel(target_devices)
         if use_multi_gpus:
+            assert isinstance(self.model, nn.DiffusionModule), "Model must be a valid `DiffusionModule`."
             self.model, use_multi_gpus = devices.data_parallel(self.model, target_devices, parallel_type=nn.diffusion.DiffusionDataParallel)
         return use_multi_gpus
 

@@ -14,6 +14,7 @@ class DiffusionDataParallel(DataParallel[Module]):
 
     * extends: `DataParallel`
     * Generic: `Module`
+    * Implements: `managers.protocols.Diffusable`
 
     - Properties:
         - time_steps: The number of time steps in diffusion model in `int`
@@ -26,8 +27,8 @@ class DiffusionDataParallel(DataParallel[Module]):
     def time_steps(self, time_steps: int) -> None:
         self.module.time_steps = time_steps
 
-    def forward_diffusion(self, x: torch.Tensor, t: torch.Tensor, *, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
-        return self.module.forward_diffusion(x, t, condition=condition)
+    def forward_diffusion(self, data: Any, t: torch.Tensor, *, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+        return self.module.forward_diffusion(data, t, condition=condition)
     
     def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         return self.module.sampling(num_images, x_t, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
