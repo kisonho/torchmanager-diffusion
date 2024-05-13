@@ -80,40 +80,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         """
         return NotImplemented
 
-    @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
-        '''
-        Samples a given number of images
-
-        - Parameters:
-            - num_images: An `int` of number of images to generate
-            - x_t: A `torch.Tensor` of the image at T step
-            - condition: An optional `torch.Tensor` of the condition to generate images
-            - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
-            - start_index: An optional `int` of the start index of the time step
-            - end_index: An `int` of the end index of the time step
-            - show_verbose: A `bool` flag to show the progress bar during testing
-        - Retruns: A `list` of `torch.Tensor` generated results
-        '''
-        # initialize
-        imgs = x_t
-        sampling_range = range(self.time_steps, 0, -1) if sampling_range is None else sampling_range
-        progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
-
-        # sampling loop time step
-        for i in sampling_range:
-            # fetch data
-            t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
-
-            # append to predicitions
-            x = DiffusionData(imgs, t, condition=condition)
-            y = self.sampling_step(x, i)
-            imgs = y.to(imgs.device)
-            progress_bar.update()
-
-        # reset model and loss
-        return [img for img in imgs]
-
     @overload
     @abc.abstractmethod
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor:

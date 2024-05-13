@@ -1,3 +1,4 @@
+from numpy import isin
 from torch.nn.utils import clip_grad
 from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
@@ -7,7 +8,6 @@ from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, U
 
 from diffusion import nn
 from diffusion.data import DiffusionData
-from .protocols import Diffusable
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -267,11 +267,11 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def train_step(self, x_train: Any, y_train: Any) -> dict[str, float]:
+    def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor) -> dict[str, float]:
         x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
         return super().train_step(x_train_noise, objective)
 
-    def test_step(self, x_test: Any, y_test: Any) -> dict[str, float]:
+    def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
         x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
         return super().test_step(x_test_noise, objective)
 
@@ -286,7 +286,14 @@ class Manager(DiffusionManager[DM]):
     * extends: `DiffusionManager`
     * Generic: `DM`
     """
-    model: Diffusable
+    model: Union[DM, nn.diffusion.DiffusionDataParallel[DM]]
+
+    @property
+    def raw_model(self) -> DM:
+        if isinstance(self.model, nn.diffusion.DiffusionDataParallel):
+            return self.model.raw_module
+        else:
+            return self.model
 
     @property
     def time_steps(self) -> int:
@@ -302,17 +309,13 @@ class Manager(DiffusionManager[DM]):
     def data_parallel(self, target_devices: list[torch.device]) -> bool:
         use_multi_gpus = super().data_parallel(target_devices)
         if use_multi_gpus:
-            assert isinstance(self.model, nn.DiffusionModule), "Model must be a valid `DiffusionModule`."
             self.model, use_multi_gpus = devices.data_parallel(self.model, target_devices, parallel_type=nn.diffusion.DiffusionDataParallel)
         return use_multi_gpus
 
-    def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
+    def forward_diffusion(self, data: torch.Tensor, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         return self.model.forward_diffusion(data, t, condition=condition)
-
-    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
-        return self.model.sampling(num_images, x_t, *args, condition=condition, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
 
     @overload
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
