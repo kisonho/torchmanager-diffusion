@@ -82,22 +82,23 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Sampling step of diffusion model
 
         - Parameters:
             - data: A `DiffusionData` object
             - i: An `int` of current time step
+            - predicted_noise: An optional `torch.Tensor` of predicted noise
             - return_noise: A `bool` flag to return predicted noise
         - Returns: A `torch.Tensor` of noised image if not returning noise or a `tuple` of noised image and predicted noise in `torch.Tensor` if returning noise
         """

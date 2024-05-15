@@ -286,36 +286,21 @@ class Manager(DiffusionManager[DM]):
     * extends: `DiffusionManager`
     * Generic: `DM`
     """
-    model: Union[DM, nn.diffusion.DiffusionDataParallel[DM]]
-
-    @property
-    def raw_model(self) -> DM:
-        if isinstance(self.model, nn.diffusion.DiffusionDataParallel):
-            return self.model.raw_module
-        else:
-            return self.model
-
     @property
     def time_steps(self) -> int:
-        return self.model.time_steps
+        return self.raw_model.time_steps
 
     @time_steps.setter
     def time_steps(self, time_steps: int) -> None:
-        self.model.time_steps = time_steps
+        self.raw_model.time_steps = time_steps
 
     def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
 
-    def data_parallel(self, target_devices: list[torch.device]) -> bool:
-        use_multi_gpus = super().data_parallel(target_devices)
-        if use_multi_gpus:
-            self.model, use_multi_gpus = devices.data_parallel(self.model, target_devices, parallel_type=nn.diffusion.DiffusionDataParallel)
-        return use_multi_gpus
-
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
-        return self.model.forward_diffusion(data, t, condition=condition)
+        return self.raw_model.forward_diffusion(data, t, condition=condition)
 
     @overload
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
@@ -326,4 +311,5 @@ class Manager(DiffusionManager[DM]):
         ...
 
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-        return self.model.sampling_step(data, i, return_noise=return_noise)
+        predicted_noise, _ = self.forward(data)
+        return self.raw_model.sampling_step(data, i, predicted_noise=predicted_noise, return_noise=return_noise)
