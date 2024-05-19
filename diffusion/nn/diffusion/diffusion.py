@@ -82,16 +82,16 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_noise: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Sampling step of diffusion model
 
