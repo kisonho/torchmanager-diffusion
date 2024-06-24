@@ -39,9 +39,15 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
     """
     encoder: E
     decoder: D
+    fast_sampling_steps: Optional[list[int]]
+
+    @property
+    def fast_sampling(self) -> bool:
+        return self.fast_sampling_steps is not None
 
     def __init__(self, model: Module, time_steps: int, /, *, encoder: E = None, decoder: D = None) -> None:
         super().__init__(model, time_steps)
+        self.fast_sampling_steps = None
 
         # initialize encoder
         self.encoder = encoder
