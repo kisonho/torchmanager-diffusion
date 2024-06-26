@@ -1,6 +1,5 @@
 import abc, torch
-from torchmanager_core import view
-from typing import Any, Generic, Optional, Sequence, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Generic, Module, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from .protocols import TimedData
@@ -33,9 +32,6 @@ class TimedModule(torch.nn.Module, abc.ABC):
         return NotImplemented
 
 
-Module = TypeVar('Module', bound=TimedModule)
-
-
 class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
     """
     The diffusion model that has the forward diffusion and sampling step algorithm implemented
@@ -65,7 +61,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.time_steps = time_steps
 
     def forward(self, data: DiffusionData, /) -> torch.Tensor:
-        return self.model(data)
+        return self.model(data) if isinstance(self.model, TimedModule) else self.model(data.x, data.t, data.condition)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
