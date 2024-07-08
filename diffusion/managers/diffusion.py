@@ -43,7 +43,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def backward(self, loss: torch.Tensor) -> None:
         super().backward(loss)
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
-        self.compiled_optimizer.step()
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, Any]:
