@@ -54,16 +54,17 @@ class Case0100(unittest.TestCase):
 
     def test_miou(self):
         from diffusion.metrics import MIoU
+        from torchvision import models
 
         # load metric
-        seg_model = torch.load("/Users/kisonho/Documents/Models/cityscapes.pth")
+        seg_model = models.segmentation.deeplabv3_resnet101()
         assert isinstance(seg_model, torch.nn.Module), "The pre-trained model is not a valid PyTorch model."
         seg_model = seg_model.eval()
         miou_fn = MIoU(seg_model)
 
         # generate fake data
         input = torch.randn(4, 3, 256, 256)
-        target = torch.randint(0, 19, size=(16, 1, 1024, 2048))
+        target = torch.randint(0, 80, size=(16, 1, 1024, 2048))
         result = float(miou_fn(input, target))
         self.assertGreaterEqual(result, 0)
 
