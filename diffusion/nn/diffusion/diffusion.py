@@ -87,7 +87,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
             return self.model(data.x, data.t)
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -95,7 +95,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
             - data: Any kind of noised data
             - t: A `torch.Tensor` of the time step, sampling uniformly if not given
             - condition: An optional `torch.Tensor` of the condition to generate images
-        - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and noises in `torch.Tensor`
+        - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and `Any` type of objective
         """
         return NotImplemented
 

@@ -1,13 +1,12 @@
-from torchmanager import losses, metrics
-from torchmanager_core import torch, view
-from torchmanager_core.typing import Any, Generic, Optional, Union, TypeVar
+import torch
+from typing import Any, Generic, Optional, Union, TypeVar
 
 from diffusion.data import DiffusionData
 from diffusion.scheduling import BetaSpace
 from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
-from .diffusion import DiffusionModule, TimedModule
+from .diffusion import DiffusionModule
 
-Module = TypeVar('Module', bound=TimedModule)
+Module = TypeVar("Module", bound=torch.nn.Module)
 SDEType = TypeVar("SDEType", bound=SDE)
 
 
@@ -39,7 +38,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
     def epsilon(self, value: float) -> None:
         assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
 
-    def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: BetaSpace, epsilon: float = 1e-5, is_continous: bool = False) -> None:
+    def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: Optional[BetaSpace] = None, epsilon: float = 1e-5, is_continous: bool = False) -> None:
         super().__init__(model, time_steps)
         """
         Constructor
@@ -88,11 +87,11 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
 
         # calculate using score function
         x = DiffusionData(data.x, t, condition=data.condition)
-        score = self.model(x)
+        score = super().forward(x)
         y = score / std
         return y
 
-    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
         # sampling t
         if t is not None:
             t = t.to(data.device)
