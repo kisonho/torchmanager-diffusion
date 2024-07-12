@@ -1,13 +1,15 @@
+from numpy import isin
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
 from torchmanager_core.typing import Optional, Union
 
 from diffusion.scheduling import BetaScheduler
+from diffusion.sde import SDEType
 from diffusion.version import DESCRIPTION
 
 
 class Configs(_Configs):
-    """Training Configurations"""
+    """Basic Training Configurations"""
     batch_size: int
     ckpt_path: Optional[str]
     data_dir: str
@@ -75,7 +77,7 @@ class Configs(_Configs):
 
 
 class DDPMTrainingConfigs(Configs):
-    """Training Configurations"""
+    """Training Configurations for DDPM."""
     beta_range: Optional[list[float]]
     beta_scheduler: BetaScheduler
 
@@ -105,3 +107,26 @@ class DDPMTrainingConfigs(Configs):
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
+
+
+class SDETrainingConfigs(Configs):
+    """Training Configurations for SDE."""
+    sde_type: SDEType
+
+    def format_arguments(self) -> None:
+        self.sde_type = self.sde_type if isinstance(self.sde_type, SDEType) else SDEType[str(self.sde_type).upper()]
+        super().format_arguments()
+
+    @staticmethod
+    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+        # experiment arguments
+        parser = Configs.get_arguments(parser)
+
+        # diffusion arguments
+        diffusion_args = parser.add_argument_group("SDE Arguments")
+        diffusion_args.add_argument("-sde", "--sde_type", type=str, default="VE", help="The type of SDE, default is 'VE'.")
+        return parser
+
+    def show_settings(self) -> None:
+        super().show_settings()
+        view.logger.info(f"SDE settings: sde_type={self.sde_type.name}")
