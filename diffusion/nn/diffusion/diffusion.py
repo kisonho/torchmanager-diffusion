@@ -1,5 +1,5 @@
 import abc, torch
-from torchmanager_core.typing import Any, Generic, Module, Optional, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Generic, Module, Optional, Union, overload
 
 from diffusion.data import DiffusionData
 from .protocols import TimedData
@@ -48,20 +48,43 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         - forward_diffusion: The forward pass of diffusion model, sample noises
         - sampling_step: The sampling step of diffusion model
     """
+    __time_steps: int
     model: Module
-    time_steps: int
 
     @property
     def sampling_range(self) -> range:
         return range(1, self.time_steps + 1)
 
+    @property
+    def time_steps(self) -> int:
+        return self.__time_steps
+
+    @time_steps.setter
+    def time_steps(self, value: int) -> None:
+        if value < 1:
+            raise ValueError("Expected `time_steps` to be greater than 0")
+        self.__time_steps = value
+
     def __init__(self, model: Module, time_steps: int) -> None:
+        """
+        Initialize the diffusion model
+        
+        - Parameters:
+            - model: The model to use for diffusion in `Module`
+            - time_steps: The total time steps of diffusion model in `int`
+        """
         super().__init__()
         self.model = model
         self.time_steps = time_steps
 
     def forward(self, data: DiffusionData, /) -> torch.Tensor:
-        return self.model(data) if isinstance(self.model, TimedModule) else self.model(data.x, data.t, data.condition)
+        # check model type
+        if isinstance(self.model, TimedModule):  # wrapped `TimedModule` model
+            return self.model(data)
+        elif data.condition is not None:  # `condition` is given for non wrapped model
+            return self.model(*data)
+        else:  # `condition` is not given for non wrapped model
+            return self.model(data.x, data.t)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
