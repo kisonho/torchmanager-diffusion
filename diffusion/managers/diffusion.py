@@ -118,8 +118,16 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         """
         return NotImplemented
 
-    @torch.no_grad()
+    @overload
     def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+        ...
+
+    @overload
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, return_path: bool = True, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> tuple[list[torch.Tensor], list[DiffusionData]]:
+        ...
+
+    @torch.no_grad()
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, return_path: bool = False, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> Union[list[torch.Tensor], tuple[list[torch.Tensor], list[DiffusionData]]]:
         '''
         Samples a given number of images
 
@@ -127,6 +135,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - num_images: An `int` of number of images to generate
             - x_t: A `torch.Tensor` of the image at T step
             - condition: An optional `torch.Tensor` of the condition to generate images
+            - return_path: A `bool` flag to return the path of the sampling diffusion data
             - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
             - start_index: An optional `int` of the start index of the time step
             - end_index: An `int` of the end index of the time step
@@ -137,6 +146,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         imgs = x_t
         sampling_range = range(self.time_steps, 0, -1) if sampling_range is None else sampling_range
         progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
+        sampling_path: list[DiffusionData] = []
 
         # sampling loop time step
         for i in sampling_range:
@@ -149,8 +159,13 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             imgs = y.to(imgs.device)
             progress_bar.update()
 
+            # append to path
+            if return_path:
+                xt = DiffusionData(y.detach().cpu(), t.detach().cpu())
+                sampling_path.append(xt)
+
         # reset model and loss
-        return [img for img in imgs]
+        return ([img for img in imgs], sampling_path) if return_path else [img for img in imgs]
 
     @torch.no_grad()
     def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
