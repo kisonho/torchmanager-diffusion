@@ -103,7 +103,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             t = t.long().float() * self.epsilon
 
         # add noise
-        z = torch.randn_like(data, device=t.device)
+        z = self.sde.prior_sampling(data.shape).to(data.device)
         mean, std = self.sde.marginal_prob(data, t)
         x = mean + std[:, None, None, None] * z
         noise = z / std[:, None, None, None]
