@@ -67,6 +67,9 @@ class BetaSpace(NamedTuple):
     def shape(self) -> torch.Size:
         """A `torch.Size` of the shape of betas"""
         return self.betas.shape
+    
+    def __len__(self) -> int:
+        return len(self.betas)
 
     def __repr__(self) -> str:
         return f"<BetaSpace {self.shape}>:\n \
