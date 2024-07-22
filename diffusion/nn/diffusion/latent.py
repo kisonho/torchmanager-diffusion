@@ -4,9 +4,9 @@ from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from diffusion.data import DiffusionData
 from diffusion.nn.diffusion.protocols import TimedData
-from .diffusion import DiffusionModule, TimedModule
+from .diffusion import DiffusionModule
 
-Module = TypeVar('Module', bound=TimedModule)
+Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=Optional[torch.nn.Module])
 D = TypeVar('D', bound=Optional[torch.nn.Module])
 
