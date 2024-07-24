@@ -94,7 +94,7 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         raise NotImplementedError('Fast sampling step method has not been implemented yet.')
 
     @overload
-    def __call__(self, x_in: TimedData, mode: LatentMode = LatentMode.FORWARD) -> Any:
+    def __call__(self, x_in: Any, mode: LatentMode = LatentMode.FORWARD) -> Any:
         ...
 
     @overload
@@ -105,7 +105,7 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
     def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.ENCODE) -> torch.Tensor:
         ...
 
-    def __call__(self, x_in: Union[torch.Tensor, TimedData], mode: LatentMode = LatentMode.FORWARD) -> Any:
+    def __call__(self, x_in: Any, mode: LatentMode = LatentMode.FORWARD) -> Any:
         if mode == LatentMode.ENCODE:
             assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to encode, got {type(x_in)}.'
             return self.encode(x_in)
@@ -113,7 +113,6 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
             assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to decode, got {type(x_in)}.'
             return self.decode(x_in)
         elif mode == LatentMode.FORWARD:
-            assert not isinstance(x_in, torch.Tensor), f'Input data must be a `TimedData` to forward, got {type(x_in)}.'
             return super().__call__(x_in)
         else:
             raise NotImplementedError(f'Latent forward mode {mode} is not implemented.')
