@@ -42,10 +42,9 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def backward(self, loss: torch.Tensor) -> None:
         super().backward(loss)
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
-        self.compiled_optimizer.step()
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, Any]:
+    def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -53,7 +52,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             - data: Any kind of noised data
             - condition: An optional `Any` kind of the condition to generate images
             - t: An optional `torch.Tensor` of the time step, sampling uniformly if not given
-        - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and `Any` kind of training objective
+        - Returns: A `tuple` of `Any` kind of wrapped noisy images and sampled time step and `Any` kind of training objective
         """
         return NotImplemented
 

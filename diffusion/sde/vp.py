@@ -1,7 +1,7 @@
 import torch
-from typing import Collection
+from typing import Collection, Optional
 
-from ..scheduling import BetaSpace
+from ..scheduling import BetaScheduler, BetaSpace
 from .base import SDE
 
 
@@ -16,9 +16,16 @@ class VPSDE(SDE):
     def beta_1(self) -> torch.Tensor:
         return self.beta_space.betas[-1]
     
-    def __init__(self, N: int, /, beta_space: BetaSpace):
+    def __init__(self, N: int, /, beta_space: Optional[BetaSpace] = None) -> None:
+        """
+        Construct a VP-SDE.
+
+        - Parameters:
+            - N: An `int` of the number of discretization time steps.
+            - beta_space: An optional `BetaSpace` of the beta space, a linear schedule by default if not provided.
+        """
         super().__init__(N)
-        self.beta_space = beta_space
+        self.beta_space = BetaScheduler.LINEAR.calculate_space(N) if beta_space is None else beta_space
         self.N = N
 
     def __call__(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

@@ -1,5 +1,5 @@
 from torchmanager_core import torch, view
-from torchmanager_core.typing import Type, Union, overload
+from torchmanager_core.typing import Type, overload
 
 from .unet import TimedUNet, UNet
 
