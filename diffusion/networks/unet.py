@@ -6,7 +6,7 @@ from diffusion.nn import Attention, ConvNextBlock, LinearAttention, PreNorm, Res
 from diffusion.nn.diffusion.protocols import TimedData
 
 
-class Unet(TimedModule):
+class UNet(torch.nn.Module):
     def __init__(
             self,
             dim: int,
@@ -86,10 +86,7 @@ class Unet(TimedModule):
             block_type(dim, dim, conv_type=Conv2d), Conv2d(dim, out_dim, 1)
         )
 
-    def unpack_data(self, x_in: TimedData) -> tuple[torch.Tensor, ...]:
-        return x_in.x, x_in.t
-
-    def forward(self, x: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, time: Optional[torch.Tensor] = None) -> torch.Tensor:
         x = self.init_conv(x)
         t = self.time_mlp(time) if self.time_mlp is not None else None
         h = []
@@ -119,3 +116,11 @@ class Unet(TimedModule):
             x = attn(x)
             x = upsample(x)
         return self.final_conv(x)
+
+
+class TimedUNet(TimedModule, UNet):
+    def unpack_data(self, x_in: TimedData) -> tuple[torch.Tensor, ...]:
+        return x_in.x, x_in.t
+
+
+Unet = TimedUNet
