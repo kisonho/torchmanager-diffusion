@@ -5,14 +5,14 @@ from .unet import TimedUNet, UNet
 
 
 @overload
-def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1) -> UNet: ...
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, with_time_emb: bool = True) -> UNet: ...
 
 
 @overload
-def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = True) -> TimedUNet: ...
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = True, with_time_emb: bool = True) -> TimedUNet: ...
 
 
-def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False) -> Union[TimedUNet, UNet]:
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False, with_time_emb: bool = True) -> UNet:
     """
     Build the UNET with given input channels. This is the UNET same as the one implemented with TensorFlow in DDPM paper.
 
@@ -23,7 +23,7 @@ def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2
         - dropout: A `float` of the dropout ratio
     - Returns: A `TimedUNet` or `Unet` which has both its input and output channel of the given `in_channels`
     """
-    model = TimedUNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout) if use_timed_data else UNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout)
+    model = TimedUNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb) if use_timed_data else UNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb)
     view.logger.info(model)
     view.logger.info("--------------------------------")
     return model
