@@ -1,5 +1,5 @@
 from torchmanager_core import torch, view
-from torchmanager_core.typing import Type, Union, overload
+from torchmanager_core.typing import Type, overload
 
 from .unet import TimedUNet, UNet
 
@@ -12,7 +12,7 @@ def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2
 def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = True) -> TimedUNet: ...
 
 
-def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False) -> Union[TimedUNet, UNet]:
+def build(in_channels: int, out_channels: int, /, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False) -> UNet:
     """
     Build the UNET with given input channels. This is the UNET same as the one implemented with TensorFlow in DDPM paper.
 
