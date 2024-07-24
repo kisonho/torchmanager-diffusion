@@ -310,5 +310,4 @@ class Manager(DiffusionManager[DM]):
 
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         predicted_noise, _ = self.forward(data)
-        data = data.to(predicted_noise.device)
         return self.raw_model.sampling_step(data, i, predicted_obj=predicted_noise, return_noise=return_noise)
