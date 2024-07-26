@@ -114,5 +114,3 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
             return self.decode(x_in)
         elif mode == LatentMode.FORWARD:
             return super().__call__(x_in, *args, **kwargs)
-        else:
-            raise NotImplementedError(f'Latent forward mode {mode} is not implemented.')
