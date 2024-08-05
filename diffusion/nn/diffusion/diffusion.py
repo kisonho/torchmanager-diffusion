@@ -1,7 +1,6 @@
 import abc, torch
 from typing import Any, Generic, Optional, TypeVar, Union, overload
 
-from diffusion.data import DiffusionData
 from .protocols import TimedData
 
 Module = TypeVar('Module', bound=torch.nn.Module)
@@ -79,7 +78,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def forward(self, data: DiffusionData, /) -> torch.Tensor:
+    def forward(self, data: TimedData, /) -> torch.Tensor:
         # check model type
         if isinstance(self.model, TimedModule):  # wrapped `TimedModule` model
             return self.model(data)
@@ -103,21 +102,21 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Sampling step of diffusion model
 
         - Parameters:
-            - data: A `DiffusionData` object
+            - data: A `TimedData` object
             - i: An `int` of current time step
             - predicted_noise: An optional `torch.Tensor` of predicted noise
             - return_noise: A `bool` flag to return predicted noise
