@@ -265,12 +265,22 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor) -> dict[str, float]:
-        x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+    def train_step(self, x_train: Union[torch.Tensor, Any], y_train: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
+        # forward diffusion sampling
+        if forward_diffusion:
+            assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
+            x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+        else:
+            x_train_noise, objective = x_train, y_train
         return super().train_step(x_train_noise, objective)
 
-    def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor) -> dict[str, float]:
-        x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+    def test_step(self, x_test: Union[torch.Tensor, Any], y_test: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
+        # forward diffusion sampling
+        if forward_diffusion:
+            assert isinstance(x_test, torch.Tensor) and isinstance(y_test, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
+            x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+        else:
+            x_test_noise, objective = x_test, y_test
         return super().test_step(x_test_noise, objective)
 
 
