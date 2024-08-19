@@ -1,8 +1,7 @@
 import abc, torch
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar, Union, overload
+from typing import Any, Generic, Optional, TypeVar, overload
 
-from diffusion.nn.diffusion.protocols import TimedData
 from .diffusion import DiffusionModule
 
 Module = TypeVar('Module', bound=torch.nn.Module)
@@ -77,12 +76,10 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
     def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.ENCODE) -> torch.Tensor:
         ...
 
-    def __call__(self, x_in: Any, *args, mode: LatentMode = LatentMode.FORWARD, **kwargs) -> Any:
+    def __call__(self, *args, mode: LatentMode = LatentMode.FORWARD, **kwargs) -> Any:
         if mode == LatentMode.ENCODE:
-            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to encode, got {type(x_in)}.'
-            return self.encode(x_in)
+            return self.encode(*args, **kwargs)
         elif mode == LatentMode.DECODE:
-            assert isinstance(x_in, torch.Tensor), f'Input data must be a `torch.Tensor` to decode, got {type(x_in)}.'
-            return self.decode(x_in)
+            return self.decode(*args, **kwargs)
         elif mode == LatentMode.FORWARD:
-            return super().__call__(x_in, *args, **kwargs)
+            return super().__call__(*args, **kwargs)
