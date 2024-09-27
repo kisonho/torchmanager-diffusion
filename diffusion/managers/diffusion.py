@@ -3,10 +3,11 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, cast, overload
 
 from diffusion import nn
 from diffusion.data import DiffusionData
+from diffusion.optim import EMAOptimizer
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -321,3 +322,11 @@ class Manager(DiffusionManager[DM]):
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         predicted_noise, _ = self.forward(data)
         return self.raw_model.sampling_step(data, i, predicted_obj=predicted_noise, return_noise=return_noise)
+
+    @torch.no_grad()
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+        if isinstance(self.optimizer, EMAOptimizer):
+            with cast(EMAOptimizer, self.compiled_optimizer).use_ema_parameters():
+                return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
+        else:
+            return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
