@@ -50,21 +50,12 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
             param.requires_grad = False  # EMA parameters should not be trainable
         super().__init__(self.ema_model.parameters(), optimizer.defaults)
 
-    def __enter__(self) -> None:
-        """
-        Swap the model parameters with EMA parameters when entering the context.
-        """
-        if not self.is_ema_parameters:
-            self.swap_parameters()
-        self.is_ema_parameters = True
-
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         Restore the original model parameters when exiting the context.
         """
         if self.is_ema_parameters:
             self.swap_parameters()
-        self.is_ema_parameters = False
 
     def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
         """
@@ -123,6 +114,8 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         Temporarily replace the model parameters with the EMA parameters.
         Use this during evaluation.
         """
+        if not self.is_ema_parameters:
+            self.swap_parameters()
         return self
 
     def zero_grad(self) -> None:
