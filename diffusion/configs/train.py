@@ -1,4 +1,3 @@
-from numpy import isin
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
 from torchmanager_core.typing import Optional, Union
@@ -13,20 +12,27 @@ class Configs(_Configs):
     batch_size: int
     ckpt_path: Optional[str]
     data_dir: str
-    device: Optional[torch.device]
+    devices: Optional[list[torch.device]]
     epochs: int
     output_model: str
     show_verbose: bool
     time_steps: int
     use_multi_gpus: bool
 
+    @property
+    def default_device(self) -> Optional[torch.device]:
+        return None if self.devices is None else self.devices[0]
+
     def format_arguments(self) -> None:
         # format arguments
         super().format_arguments()
         self.ckpt_path = os.path.normpath(self.ckpt_path) if self.ckpt_path is not None else None
         self.data_dir = os.path.normpath(self.data_dir)
-        self.device = torch.device(self.device) if self.device is not None else None
         self.output_model = os.path.normpath(self.output_model)
+
+        # initialize device
+        if isinstance(self.devices, list):
+            self.devices = [torch.device(device) for device in self.devices]
 
         # initialize console
         if self.show_verbose:
@@ -52,13 +58,14 @@ class Configs(_Configs):
         training_args.add_argument("-b", "--batch_size", type=int, default=64, help="The batch size, default is 64.")
         training_args.add_argument("-e", "--epochs", type=int, default=100, help="The training epochs, default is 100.")
         training_args.add_argument("-t", "--time_steps", type=int, default=1000, help="The total time steps of diffusion model, default is 1000.")
+        training_args.add_argument("-d", "--devices", type=str, default=None, nargs="+", help="The device(s) used for training, default is `None`.")
         training_args.add_argument("--ckpt_path", type=str, default=None, help="The path to the checkpoint file to continue training.")
         training_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
         training_args = _Configs.get_arguments(training_args)
 
         # device arguments
         device_args = parser.add_argument_group("Device Arguments")
-        device_args.add_argument("--device", type=str, default=None, help="The target device to run for the experiment.")
+        
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
@@ -70,7 +77,7 @@ class Configs(_Configs):
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Output model: {self.output_model}")
         view.logger.info(f"Training settings: batch_size={self.batch_size}, epoch={self.epochs}, show_verbose={self.show_verbose}")
-        view.logger.info(f"Device settings: device={self.device}, use_multi_gpus={self.use_multi_gpus}")
+        view.logger.info(f"Device settings: device={self.devices}, use_multi_gpus={self.use_multi_gpus}")
         view.logger.info(f"Diffusion model settings: time_steps={self.time_steps}")
         if self.ckpt_path is not None:
             view.logger.info(f"From checkpoint: {self.ckpt_path}")

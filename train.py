@@ -32,7 +32,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
     - Returns: A trained `diffusion.networks.Unet` model
     """
     # load datasets
-    training_dataset, validation_dataset, in_channels, _ = configs.dataset.load(configs.data_dir, configs.batch_size, device=configs.device)
+    training_dataset, validation_dataset, in_channels, _ = configs.dataset.load(configs.data_dir, configs.batch_size, device=configs.default_device)
 
     # load model
     model = diffusion.networks.build_unet(in_channels)
@@ -57,7 +57,7 @@ def train(configs: TrainingConfigs, /) -> diffusion.networks.Unet:
     callbacks_list: list[callbacks.Callback] = [experiment_callback]
 
     # train model
-    model = manager.fit(training_dataset, configs.epochs, device=configs.device, use_multi_gpus=configs.use_multi_gpus, val_dataset=validation_dataset, show_verbose=configs.show_verbose, callbacks_list=callbacks_list)
+    model = manager.fit(training_dataset, configs.epochs, device=configs.devices, use_multi_gpus=configs.use_multi_gpus, val_dataset=validation_dataset, show_verbose=configs.show_verbose, callbacks_list=callbacks_list)
     assert isinstance(model, torch.nn.Module), "The model returned from manager is not a valid `torch.nn.Module`"
 
     # save model
