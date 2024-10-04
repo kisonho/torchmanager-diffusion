@@ -18,6 +18,7 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
     """
     __ema_decay: float
     base_optimizer: O
+    is_ema_parameters: bool
 
     @property
     def ema_decay(self) -> float:
@@ -40,6 +41,7 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         """
         self.base_optimizer = optimizer
         self.ema_decay = ema_decay
+        self.is_ema_parameters = False
         self.model = model
 
         # Create a deep copy of model parameters for EMA
@@ -47,6 +49,22 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         for param in self.ema_model.parameters():
             param.requires_grad = False  # EMA parameters should not be trainable
         super().__init__(self.ema_model.parameters(), optimizer.defaults)
+
+    def __enter__(self) -> None:
+        """
+        Swap the model parameters with EMA parameters when entering the context.
+        """
+        if not self.is_ema_parameters:
+            self.swap_parameters()
+        self.is_ema_parameters = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Restore the original model parameters when exiting the context.
+        """
+        if self.is_ema_parameters:
+            self.swap_parameters()
+        self.is_ema_parameters = False
 
     def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
         """
@@ -98,43 +116,17 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         """
         for ema_param, param in zip(self.ema_model.parameters(), self.model.parameters()):
             param.data, ema_param.data = ema_param.data, param.data
+        self.is_ema_parameters = not self.is_ema_parameters
 
-    def use_ema_parameters(self) -> 'EMAParameterContext':
+    def use_ema_parameters(self) -> 'EMAOptimizer[O, M]':
         """
         Temporarily replace the model parameters with the EMA parameters.
         Use this during evaluation.
         """
-        return EMAParameterContext(self)
-
-    def restore_model_parameters(self) -> None:
-        """
-        Restore the original model parameters after evaluation.
-        """
-        self.swap_parameters()
+        return self
 
     def zero_grad(self) -> None:
         """
         Zero the gradients of the base optimizer.
         """
         self.base_optimizer.zero_grad()
-
-
-class EMAParameterContext:
-    """
-    A helper context manager class to handle the swapping and restoration of EMA parameters.
-    """
-
-    def __init__(self, ema_optimizer: EMAOptimizer) -> None:
-        self.ema_optimizer = ema_optimizer
-
-    def __enter__(self) -> None:
-        """
-        Swap the model parameters with EMA parameters when entering the context.
-        """
-        self.ema_optimizer.swap_parameters()
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """
-        Restore the original model parameters when exiting the context.
-        """
-        self.ema_optimizer.restore_model_parameters()
