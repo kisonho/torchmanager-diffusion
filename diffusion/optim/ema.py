@@ -50,6 +50,9 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
             param.requires_grad = False  # EMA parameters should not be trainable
         super().__init__(self.ema_model.parameters(), optimizer.defaults)
 
+    def __enter__(self) -> 'EMAOptimizer[O, M]':
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         Restore the original model parameters when exiting the context.

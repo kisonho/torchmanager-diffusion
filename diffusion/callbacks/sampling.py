@@ -72,7 +72,7 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
             Image.fromarray(img).save(img_path)
             Image.fromarray(sample).save(sample_path)
 
-    def on_epoch_end(self, epoch: int, summary: dict[str, float] = ..., val_summary: Optional[dict[str, float]] = None) -> None:
+    def on_epoch_end(self, epoch: int, summary: dict[str, float] = {}, val_summary: Optional[dict[str, float]] = None) -> None:
         if epoch % self.frequency == 0 and epoch != 0:
             super().on_epoch_end(epoch, summary, val_summary)
 
