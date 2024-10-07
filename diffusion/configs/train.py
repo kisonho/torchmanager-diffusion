@@ -65,7 +65,6 @@ class Configs(_Configs):
 
         # device arguments
         device_args = parser.add_argument_group("Device Arguments")
-        
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 

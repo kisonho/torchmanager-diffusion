@@ -79,6 +79,10 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         """
         Update the EMA parameters using the current model parameters.
         """
+        # move ema model to the same device as the model
+        self.ema_model = self.ema_model.to(next(self.model.parameters()).device)
+
+        # ema update
         with torch.no_grad():
             for ema_param, param in zip(self.ema_model.parameters(), self.model.parameters()):
                 ema_param.data.mul_(self.ema_decay).add_(param.data, alpha=(1.0 - self.ema_decay))
