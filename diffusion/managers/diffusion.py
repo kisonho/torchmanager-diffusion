@@ -1,4 +1,5 @@
 from torch.nn.utils import clip_grad
+from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
@@ -25,7 +26,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     """
     time_steps: int
 
-    def __init__(self, model: Module, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    def __init__(self, model: Module, time_steps: int, optimizer: Optional[Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 
