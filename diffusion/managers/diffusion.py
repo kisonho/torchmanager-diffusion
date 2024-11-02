@@ -305,6 +305,7 @@ class Manager(DiffusionManager[DM]):
     * Generic: `DM`
 
     - Properties:
+        - scaler: An optional `GradScaler` object to use half precision
         - use_fp16: A `bool` flag to use half precision
     """
     scaler: Optional[GradScaler]  # type: ignore
@@ -330,6 +331,11 @@ class Manager(DiffusionManager[DM]):
             self.scaler = GradScaler()
         else:
             self.scaler = None
+
+    def convert(self) -> None:
+        if not hasattr(self, 'scaler'):
+            self.scaler = None
+        super().convert()
 
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         # initialize
