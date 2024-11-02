@@ -1,3 +1,4 @@
+from torch.amp.autocast_mode import autocast
 from torch.nn.utils import clip_grad
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -5,6 +6,11 @@ from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, cast, overload
+
+try:
+    from torch.cuda.amp.grad_scaler import GradScaler
+except ImportError:
+    GradScaler = NotImplemented
 
 from diffusion import nn
 from diffusion.data import DiffusionData
@@ -297,7 +303,12 @@ class Manager(DiffusionManager[DM]):
 
     * extends: `DiffusionManager`
     * Generic: `DM`
+
+    - Properties:
+        - use_fp16: A `bool` flag to use half precision
     """
+    scaler: Optional[GradScaler]  # type: ignore
+
     @property
     def time_steps(self) -> int:
         return self.raw_model.time_steps
@@ -306,8 +317,19 @@ class Manager(DiffusionManager[DM]):
     def time_steps(self, time_steps: int) -> None:
         self.raw_model.time_steps = time_steps
 
-    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    @property
+    def use_fp16(self) -> bool:
+        return self.scaler is not None
+
+    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
+
+        # initialize fp16 scaler
+        if use_fp16:
+            assert GradScaler is not NotImplemented, _raise(ImportError("The `torch.cuda.amp` module is not available."))
+            self.scaler = GradScaler()
+        else:
+            self.scaler = None
 
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
         # initialize
@@ -333,3 +355,32 @@ class Manager(DiffusionManager[DM]):
                 return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
         else:
             return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
+
+    def to(self, device: torch.device) -> None:
+        if device.type != 'cuda' and self.use_fp16:
+            view.warnings.warn("The `GradScaler` is only available on CUDA devices. Disabling half precision.")
+            self.scaler = None
+        return super().to(device)
+
+    def train_step(self, x_train: Union[torch.Tensor, Any], y_train: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
+        if not self.use_fp16:
+            return super().train_step(x_train, y_train, forward_diffusion=forward_diffusion)
+
+        # forward diffusion sampling
+        if forward_diffusion:
+            assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
+            x_t, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+
+        # forward pass
+        with autocast('cuda'):
+            y, loss = self.forward(x_t, objective)
+        assert loss is not None, _raise(TypeError("Loss cannot be fetched."))
+
+        # backward pass
+        assert self.scaler is not None, _raise(RuntimeError("The `GradScaler` is not available."))
+        self.compiled_optimizer.zero_grad()
+        loss = cast(torch.Tensor, self.scaler.scale(loss))
+        self.backward(loss)
+        self.scaler.step(self.compiled_optimizer)
+        self.scaler.update()
+        return self.eval(y, objective)
