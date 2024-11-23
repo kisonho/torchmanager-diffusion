@@ -148,13 +148,13 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
 
         # sampling loop time step
-        for i in sampling_range:
+        for i, t in enumerate(sampling_range):
             # fetch data
-            t = torch.full((num_images,), i, dtype=torch.long, device=imgs.device)
+            t = torch.full((num_images,), t, dtype=torch.long, device=imgs.device)
 
             # append to predicitions
             x = DiffusionData(imgs, t, condition=condition)
-            y = self.sampling_step(x, i)
+            y = self.sampling_step(x, len(sampling_range) - i)
             imgs = y.to(imgs.device)
             progress_bar.update()
 
