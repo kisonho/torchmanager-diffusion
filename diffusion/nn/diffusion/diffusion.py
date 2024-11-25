@@ -17,7 +17,7 @@ class TimedModule(torch.nn.Module, abc.ABC):
         - unpack_data: The method that accepts inputs perform to `.protocols.TimedData` to unpack the given inputs and passed to `forward` method
     """
 
-    def __call__(self, x_in: DiffusionData | torch.Tensor, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, x_in: Union[DiffusionData, torch.Tensor], *args: Any, **kwargs: Any) -> Any:
         if isinstance(x_in, DiffusionData):
             data = self.unpack_data(x_in)
         return super().__call__(*data, *args, **kwargs)
@@ -79,7 +79,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def forward(self, data: DiffusionData | torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, data: Union[DiffusionData, torch.Tensor], *args, **kwargs) -> torch.Tensor:
         # check model type
         if isinstance(self.model, TimedModule) and isinstance(data, DiffusionData):  # wrapped `TimedModule` model
             return self.model(data)
