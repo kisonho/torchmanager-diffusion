@@ -328,7 +328,7 @@ class Manager(DiffusionManager[DM]):
         # initialize fp16 scaler
         if use_fp16:
             assert GradScaler is not NotImplemented, _raise(ImportError("The `torch.cuda.amp` module is not available."))
-            self.scaler = GradScaler()
+            self.scaler = GradScaler()  # type: ignore
         else:
             self.scaler = None
 
