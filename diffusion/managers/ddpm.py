@@ -2,10 +2,8 @@ from torchmanager import losses, metrics
 from torchmanager_core import torch, deprecated
 from torchmanager_core.typing import Module, Optional, Union
 
-from diffusion.version import CURRENT
-from diffusion.data import DiffusionData
-from diffusion.scheduling import BetaSpace
 from .diffusion import DiffusionManager
+from .protocols import BetaSpace, DiffusionData
 
 
 class DDPMManager(DiffusionManager[Module]):

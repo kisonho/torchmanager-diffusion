@@ -2,9 +2,7 @@ from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
 from torchmanager_core.typing import Optional, Union
 
-from diffusion.scheduling import BetaScheduler
-from diffusion.sde import SDEType
-from diffusion.version import DESCRIPTION
+from .protocols import BetaScheduler, SDEType, DESCRIPTION
 
 
 class Configs(_Configs):

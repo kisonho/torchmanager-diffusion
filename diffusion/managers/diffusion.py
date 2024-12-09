@@ -5,8 +5,7 @@ from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, overload
 
-from diffusion import nn
-from diffusion.data import DiffusionData
+from .protocols import DiffusionData, DiffusionModule
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -287,7 +286,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return super().test_step(x_test_noise, objective)
 
 
-DM = TypeVar('DM', bound=nn.DiffusionModule)
+DM = TypeVar('DM', bound=DiffusionModule)
 
 
 class Manager(DiffusionManager[DM]):

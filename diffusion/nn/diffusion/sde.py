@@ -1,10 +1,8 @@
-import torch
-from typing import Any, Generic, Optional, Union, TypeVar
+import torch, warnings
+from typing import Generic, Optional, Union, TypeVar
 
-from diffusion.data import DiffusionData
-from diffusion.scheduling import BetaSpace
-from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
 from .diffusion import DiffusionModule
+from .protocols import BetaSpace, DiffusionData, SDE, SubVPSDE, VESDE, VPSDE
 
 Module = TypeVar("Module", bound=torch.nn.Module)
 SDEType = TypeVar("SDEType", bound=SDE)
@@ -59,6 +57,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         self.epsilon = epsilon
         self.is_continous = is_continous
         self.sde = sde
+        warnings.warn("The `SDEManager` is still in beta testing with potential bugs.", category=FutureWarning)
 
         # check parameters
         if isinstance(self.sde, VPSDE) and self.beta_space is None:

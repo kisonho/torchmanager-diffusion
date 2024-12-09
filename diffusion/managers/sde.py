@@ -58,7 +58,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         self.epsilon = epsilon
         self.is_continous = is_continous
         self.sde = sde
-        view.warnings.warn("The `SDEManager` is still in beta testing with potential bugs.", category=UserWarning)
+        view.warnings.warn("The `SDEManager` has been deprecated, use `nn.diffusion.SDEModule` along with `Manager` instead.", category=DeprecationWarning)
 
         # check parameters
         if isinstance(self.sde, VPSDE) and self.beta_space is None:
