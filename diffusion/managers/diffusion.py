@@ -12,9 +12,7 @@ try:
 except ImportError:
     GradScaler = NotImplemented
 
-from diffusion import nn
-from diffusion.data import DiffusionData
-from diffusion.optim import EMAOptimizer
+from .protocols import DiffusionData, DiffusionModule, EMAOptimizer
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -294,7 +292,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return super().test_step(x_test_noise, objective)
 
 
-DM = TypeVar('DM', bound=nn.DiffusionModule)
+DM = TypeVar('DM', bound=DiffusionModule)
 
 
 class Manager(DiffusionManager[DM]):

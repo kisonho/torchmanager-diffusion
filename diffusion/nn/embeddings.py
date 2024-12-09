@@ -1,5 +1,4 @@
-import math
-import torch
+import math, torch
 
 
 class SinusoidalPositionEmbeddings(torch.nn.Module):

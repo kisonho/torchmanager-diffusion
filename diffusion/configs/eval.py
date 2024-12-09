@@ -4,7 +4,7 @@ from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise
 from torchmanager_core.typing import Optional, Union
 
-from ..version import DESCRIPTION
+from .protocols import DESCRIPTION
 
 
 class DDPMEvalConfigs(_Configs):
