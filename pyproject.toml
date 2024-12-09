@@ -9,7 +9,7 @@ packages = [
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 torchmanager = "^1.2"
 einops = "*"
 lpips = "*"

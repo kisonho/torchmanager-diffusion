@@ -1,6 +1,6 @@
 import torch
 from functools import partial
-from typing import Optional, Type
+from typing import Type
 
 from diffusion.nn import Attention, ConvNextBlock, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings, TimedModule
 from diffusion.nn.diffusion.protocols import TimedData
@@ -11,8 +11,8 @@ class UNet(torch.nn.Module):
             self,
             dim: int,
             /,
-            init_dim: Optional[int] = None,
-            out_dim: Optional[int] = None,
+            init_dim: int | None = None,
+            out_dim: int | None = None,
             dropout: float = 0,
             dim_mults: tuple[int, ...] = (1, 2, 4, 8),
             channels: int = 3,
@@ -86,7 +86,7 @@ class UNet(torch.nn.Module):
             block_type(dim, dim, conv_type=Conv2d), Conv2d(dim, out_dim, 1)
         )
 
-    def forward(self, x: torch.Tensor, time: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, time: torch.Tensor | None = None) -> torch.Tensor:
         x = self.init_conv(x)
         t = self.time_mlp(time) if self.time_mlp is not None else None
         h = []

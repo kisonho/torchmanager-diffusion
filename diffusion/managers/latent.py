@@ -36,6 +36,7 @@ class LDMManager(DiffusionManager[Module]):
             - metrics: An optional `dict` of metrics with a name in `str` and a `Metric` object to calculate the metric
         """
         super().__init__(model, time_steps, optimizer=optimizer, loss_fn=loss_fn, metrics=metrics)
+        view.warnings.warn("The `LDMManager` is deprecated, use `nn.LatentDiffusionModule` instead.", DeprecationWarning)
 
     @torch.no_grad()
     def fast_sampling(self, num_images: int, x_t: torch.Tensor, sampling_range: Sequence[int], condition: Optional[torch.Tensor] = None, *, show_verbose: bool = False) -> list[torch.Tensor]:

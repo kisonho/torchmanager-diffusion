@@ -1,5 +1,5 @@
 from torchmanager import losses, metrics
-from torchmanager_core import torch, deprecated
+from torchmanager_core import torch, view
 from torchmanager_core.typing import Module, Optional, Union
 
 from .diffusion import DiffusionManager
@@ -18,6 +18,7 @@ class DDPMManager(DiffusionManager[Module]):
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
+        view.warnings.warn("The `DDPMManager` is deprecated, use `nn.DDPM` instead.", DeprecationWarning)
 
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
         """
