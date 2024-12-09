@@ -1,4 +1,3 @@
-from numpy import isin
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
 from torchmanager_core.typing import Optional, Union
