@@ -1,12 +1,12 @@
 import abc, torch
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar, overload
+from typing import Any, Generic, TypeVar, overload
 
 from .diffusion import DiffusionModule
 
 Module = TypeVar('Module', bound=torch.nn.Module)
-E = TypeVar('E', bound=Optional[torch.nn.Module])
-D = TypeVar('D', bound=Optional[torch.nn.Module])
+E = TypeVar('E', bound=torch.nn.Module | None)
+D = TypeVar('D', bound=torch.nn.Module | None)
 
 
 class LatentMode(Enum):

@@ -2,7 +2,7 @@ import torch.nn.functional as F
 from torchmanager.data import sliding_window
 from torchmanager.metrics import MeanIoU
 from torchmanager_core import torch
-from torchmanager_core.typing import Callable, Generic, Module, Optional
+from torchmanager_core.typing import Callable, Generic, Module
 
 
 class MIoU(MeanIoU, Generic[Module]):
@@ -13,10 +13,10 @@ class MIoU(MeanIoU, Generic[Module]):
         - normalize_fn: An optional `Callable` function that accepts an image in `torch.Tensor` and returns a normalized image in `torch.Tensor`.
         - segmentation_network: A `torch.nn.Module` to segment the generated images.
     """
-    normalize_fn: Optional[Callable[[torch.Tensor], torch.Tensor]]
+    normalize_fn: Callable[[torch.Tensor], torch.Tensor] | None
     segmentation_network: Module
 
-    def __init__(self, segmentation_network: Module, /, dim: int = 1, target: Optional[str] = None, *, normalize_fn: Optional[Callable[[torch.Tensor], torch.Tensor]] = None) -> None:
+    def __init__(self, segmentation_network: Module, /, dim: int = 1, target: str | None = None, *, normalize_fn: Callable[[torch.Tensor], torch.Tensor] | None = None) -> None:
         '''
         The mean intersection over union metric (mIoU) for image generation using a segmentation network.
 

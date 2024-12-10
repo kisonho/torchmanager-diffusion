@@ -1,6 +1,6 @@
 import copy, torch
 from torch.optim.optimizer import Optimizer
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 M = TypeVar('M', bound=torch.nn.Module)
 O = TypeVar('O', bound=Optimizer)
@@ -60,7 +60,7 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         if self.is_ema_parameters:
             self.swap_parameters()
 
-    def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
+    def step(self, closure: Callable[[], float] | None = None) -> float | None:
         """
         Perform a single optimization step and update EMA parameters.
 

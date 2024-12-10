@@ -1,5 +1,9 @@
 import torch
-from typing import Optional, Protocol
+from typing import Protocol
+
+from diffusion.data import DiffusionData
+from diffusion.scheduling import BetaSpace
+from diffusion.sde import SDE, SubVPSDE, VESDE, VPSDE
 
 
 class TimedData(Protocol):
@@ -12,5 +16,5 @@ class TimedData(Protocol):
         return NotImplemented
 
     @property
-    def condition(self) -> Optional[torch.Tensor]:
+    def condition(self) -> torch.Tensor | None:
         return NotImplemented

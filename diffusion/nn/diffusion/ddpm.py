@@ -1,5 +1,5 @@
 import torch
-from typing import Optional, TypeVar, Union
+from typing import TypeVar
 
 from diffusion.data import DiffusionData
 from diffusion.scheduling.space import BetaSpace
@@ -24,7 +24,7 @@ class DDPM(DiffusionModule[Module]):
         super().__init__(model, time_steps)
         self.beta_space = beta_space
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -42,7 +42,7 @@ class DDPM(DiffusionModule[Module]):
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
         return DiffusionData(x, t, condition=condition), noise
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 

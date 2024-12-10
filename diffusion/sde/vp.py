@@ -1,7 +1,7 @@
 import torch
 from typing import Collection, Optional
 
-from ..scheduling import BetaScheduler, BetaSpace
+from .protocols import BetaScheduler, BetaSpace
 from .base import SDE
 
 
