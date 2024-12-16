@@ -1,5 +1,5 @@
 import abc, torch
-from typing import Any, Generic, Optional, TypeVar, Union, overload
+from typing import Any, Generic, TypeVar, overload
 
 from .protocols import TimedData
 
@@ -88,7 +88,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
             return self.model(data.x, data.t)
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
+    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[Any, Any]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -102,16 +102,16 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: Optional[torch.Tensor] = None, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 

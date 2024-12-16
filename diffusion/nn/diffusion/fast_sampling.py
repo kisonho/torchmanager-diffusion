@@ -1,5 +1,5 @@
 import abc, torch
-from typing import Optional, TypeVar, Union, overload
+from typing import TypeVar, overload
 
 from .diffusion import DiffusionModule
 from .protocols import TimedData
@@ -8,7 +8,7 @@ Module = TypeVar('Module', bound=torch.nn.Module)
 
 
 class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
-    fast_sampling_steps: Optional[list[int]]
+    fast_sampling_steps: list[int] | None
 
     @property
     def fast_sampling(self) -> bool:
@@ -20,16 +20,16 @@ class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = True, predicted_obj: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, torch.Tensor]:
+    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = True, predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: Optional[torch.Tensor] = None) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def fast_sampling_step(self, data: TimedData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         '''
         Samples a single time step using fast sampling algorithm.
 

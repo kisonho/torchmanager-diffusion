@@ -1,7 +1,7 @@
 import torch
 from functools import partial
 from torch.nn import functional as F
-from typing import Generic, Optional, Type, TypeVar
+from typing import Generic, Type, TypeVar
 from einops import rearrange, reduce
 
 M = TypeVar("M", bound=torch.nn.Module)
@@ -39,7 +39,7 @@ class ConvBlock(torch.nn.Module):
         self.norm = torch.nn.GroupNorm(groups, dim_out)
         self.act = torch.nn.SiLU()
 
-    def forward(self, x: torch.Tensor, scale_shift: Optional[tuple[torch.Tensor, torch.Tensor]] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, scale_shift: tuple[torch.Tensor, torch.Tensor] | None = None) -> torch.Tensor:
         x = self.proj(x)
         x = self.norm(x)
         if scale_shift is not None:
@@ -52,7 +52,7 @@ class ConvBlock(torch.nn.Module):
 class ConvNextBlock(torch.nn.Module):
     """https://arxiv.org/abs/2201.03545"""
 
-    def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: Optional[int] = None, mult: int = 2, norm: bool = True) -> None:
+    def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: int | None = None, mult: int = 2, norm: bool = True) -> None:
         super().__init__()
         Conv2d = conv_type
         self.mlp = (torch.nn.Sequential(torch.nn.GELU(), torch.nn.Linear(time_emb_dim, dim)) if time_emb_dim is not None else None)
@@ -67,7 +67,7 @@ class ConvNextBlock(torch.nn.Module):
         )
         self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else torch.nn.Identity()
 
-    def forward(self, x: torch.Tensor, time_emb: Optional[int] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, time_emb: int | None = None) -> torch.Tensor:
         h = self.ds_conv(x)
         if self.mlp is not None and time_emb is not None:
             assert time_emb is not None, "Time embedding must be passed in"
@@ -90,7 +90,7 @@ class Residual(torch.nn.Module, Generic[M]):
 class ResnetBlock(torch.nn.Module):
     """https://arxiv.org/abs/1512.03385"""
 
-    def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: Optional[int] = None, groups: int = 8) -> None:
+    def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: int | None = None, groups: int = 8) -> None:
         super().__init__()
         Conv2d = conv_type
         self.mlp = (torch.nn.Sequential(torch.nn.SiLU(), torch.nn.Linear(time_emb_dim, dim_out)) if time_emb_dim is not None else None)
@@ -99,7 +99,7 @@ class ResnetBlock(torch.nn.Module):
         self.block2 = ConvBlock(dim_out, dim_out, conv_type=Conv2d, groups=groups)
         self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else torch.nn.Identity()
 
-    def forward(self, x: torch.Tensor, time_emb: Optional[int] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, time_emb: int | None = None) -> torch.Tensor:
         h = self.block1(x)
         if self.mlp is not None and time_emb is not None:
             time_emb = self.mlp(time_emb)

@@ -1,5 +1,5 @@
 import torch, warnings
-from typing import Generic, Optional, Union, TypeVar
+from typing import Generic, TypeVar
 
 from .diffusion import DiffusionModule
 from .protocols import BetaSpace, DiffusionData, SDE, SubVPSDE, VESDE, VPSDE
@@ -23,7 +23,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         - sde: The SDE in `SDEType` to train
     """
     __epsilon: float
-    beta_space: Optional[BetaSpace]
+    beta_space: BetaSpace | None
     is_continous: bool
     sde: SDEType
 
@@ -36,7 +36,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
     def epsilon(self, value: float) -> None:
         assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
 
-    def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: Optional[BetaSpace] = None, epsilon: float = 1e-5, is_continous: bool = False) -> None:
+    def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: BetaSpace | None = None, epsilon: float = 1e-5, is_continous: bool = False) -> None:
         super().__init__(model, time_steps)
         """
         Constructor
@@ -90,7 +90,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         y = score / std
         return y
 
-    def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, condition: torch.Tensor | None = None, t: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # sampling t
         if t is not None:
             t = t.to(data.device)
@@ -108,12 +108,12 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         noise = z / std[:, None, None, None]
         return DiffusionData(x, t, condition=condition), noise
 
-    def to(self, device: Union[str, torch.device]) -> 'SDEModule[Module, SDEType]':
+    def to(self, device: str | torch.device) -> 'SDEModule[Module, SDEType]':
         if self.beta_space is not None:
             self.beta_space = self.beta_space.to(torch.device(device))
         return super().to(device)
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE

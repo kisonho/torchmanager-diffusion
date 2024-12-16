@@ -23,7 +23,7 @@ class LPIPS(Metric):
 
     def __init__(self, net: LPIPSNet = LPIPSNet.ALEX, target: Optional[str] = None) -> None:
         super().__init__(target=target)
-        self.lpips = _LPIPS(net=net.value, verbose=False)
+        self.lpips = _LPIPS(net=net.value, verbose=False)  # type: ignore
         self.lpips.eval()
 
     @torch.no_grad()

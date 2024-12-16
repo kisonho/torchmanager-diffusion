@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
-from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, cast, overload
+from torchmanager_core.typing import Any, Module, Sequence, TypeVar, cast, overload
 
 from .protocols import DiffusionData, DiffusionModule, EMAOptimizer
 
@@ -26,7 +26,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     """
     time_steps: int
 
-    def __init__(self, model: Module, time_steps: int, optimizer: Optional[Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    def __init__(self, model: Module, time_steps: int, optimizer: Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 
@@ -46,7 +46,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
+    def forward_diffusion(self, data: Any, condition: Any = None, t: torch.Tensor | None = None) -> tuple[Any, Any]:
         """
         Forward pass of diffusion model, sample noises
 
@@ -59,7 +59,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: int | tuple[int, ...], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         # find available device
         cpu, device, target_devices = devices.search(device)
         if device == cpu and len(target_devices) < 2:
@@ -109,7 +109,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 
@@ -122,7 +122,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Optional[torch.Tensor] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: torch.Tensor | None = None, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -156,7 +156,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return [img for img in imgs]
 
     @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: DataLoader[torch.Tensor] | Dataset[torch.Tensor], *args: Any, sampling_images: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         """
         Test target model
 
@@ -269,7 +269,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def to(self, device: torch.device) -> None:
         super().to(device)
 
-    def train_step(self, x_train: Union[torch.Tensor, Any], y_train: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
+    def train_step(self, x_train: Any, y_train: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion:
             assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
@@ -278,7 +278,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             x_train_noise, objective = x_train, y_train
         return super().train_step(x_train_noise, objective)
 
-    def test_step(self, x_test: Union[torch.Tensor, Any], y_test: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
+    def test_step(self, x_test: Any, y_test: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion:
             assert isinstance(x_test, torch.Tensor) and isinstance(y_test, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
@@ -316,7 +316,7 @@ class Manager(DiffusionManager[DM]):
     def use_fp16(self) -> bool:
         return self.scaler is not None
 
-    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
+    def __init__(self, model: DM, optimizer: torch.optim.Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
         self.scaler = GradScaler("cpu") if use_fp16 else None
 
@@ -358,12 +358,12 @@ class Manager(DiffusionManager[DM]):
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         predicted_noise, _ = self.forward(data)
         return self.raw_model.sampling_step(data, i, predicted_obj=predicted_noise, return_noise=return_noise)
 
     @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: DataLoader[torch.Tensor] | Dataset[torch.Tensor], *args: Any, sampling_images: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         if isinstance(self.optimizer, EMAOptimizer):
             with cast(EMAOptimizer, self.compiled_optimizer).use_ema_parameters():
                 return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
