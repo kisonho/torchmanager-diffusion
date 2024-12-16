@@ -1,4 +1,5 @@
 from torch.amp.autocast_mode import autocast
+from torch.amp.grad_scaler import GradScaler
 from torch.nn.utils import clip_grad
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -6,11 +7,6 @@ from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
 from torchmanager_core.typing import Any, Module, Optional, Sequence, TypeVar, Union, cast, overload
-
-try:
-    from torch.cuda.amp.grad_scaler import GradScaler
-except ImportError:
-    GradScaler = NotImplemented
 
 from .protocols import DiffusionData, DiffusionModule, EMAOptimizer
 
@@ -306,7 +302,7 @@ class Manager(DiffusionManager[DM]):
         - scaler: An optional `GradScaler` object to use half precision
         - use_fp16: A `bool` flag to use half precision
     """
-    scaler: Optional[GradScaler]  # type: ignore
+    scaler: GradScaler | None
 
     @property
     def time_steps(self) -> int:
@@ -322,23 +318,37 @@ class Manager(DiffusionManager[DM]):
 
     def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
+        self.scaler = GradScaler("cpu") if use_fp16 else None
 
-        # initialize fp16 scaler
-        if use_fp16:
-            assert GradScaler is not NotImplemented, _raise(ImportError("The `torch.cuda.amp` module is not available."))
-            self.scaler = GradScaler()  # type: ignore
-        else:
-            self.scaler = None
+    def backward(self, loss: torch.Tensor) -> None:
+        if self.use_fp16:
+            loss = cast(torch.Tensor, cast(GradScaler, self.scaler).scale(loss))
+        super().backward(loss)
 
     def convert(self) -> None:
         if not hasattr(self, 'scaler'):
             self.scaler = None
         super().convert()
 
-    def forward_diffusion(self, data: torch.Tensor, condition: Optional[Any] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, Any]:
+    def forward(self, input: Any, target: Any = None) -> tuple[Any, torch.Tensor | None]:
+        if self.use_fp16:
+            with autocast('cuda'):
+                return super().forward(input, target)
+        else:
+            return super().forward(input, target)
+
+    def forward_diffusion(self, data: torch.Tensor, condition: Any = None, t: torch.Tensor | None = None) -> tuple[Any, Any]:
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         return self.raw_model.forward_diffusion(data, t, condition=condition)
+
+    def optimize(self) -> None:
+        if self.use_fp16:
+            scaler = cast(GradScaler, self.scaler)
+            scaler.step(self.compiled_optimizer)
+            scaler.update()
+        else:
+            super().optimize()
 
     @overload
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
@@ -361,30 +371,6 @@ class Manager(DiffusionManager[DM]):
             return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
 
     def to(self, device: torch.device) -> None:
-        if device.type != 'cuda' and self.use_fp16:
-            view.warnings.warn("The `GradScaler` is only available on CUDA devices. Disabling half precision.")
-            self.scaler = None
+        if self.use_fp16:
+            self.scaler = GradScaler(device.type)
         return super().to(device)
-
-    def train_step(self, x_train: Union[torch.Tensor, Any], y_train: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
-        if not self.use_fp16:
-            return super().train_step(x_train, y_train, forward_diffusion=forward_diffusion)
-
-        # forward diffusion sampling
-        if forward_diffusion:
-            assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
-            x_t, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
-
-        # forward pass
-        with autocast('cuda'):
-            y, loss = self.forward(x_t, objective)
-        assert loss is not None, _raise(TypeError("Loss cannot be fetched."))
-
-        # backward pass
-        assert self.scaler is not None, _raise(RuntimeError("The `GradScaler` is not available."))
-        self.compiled_optimizer.zero_grad()
-        loss = cast(torch.Tensor, self.scaler.scale(loss))
-        self.backward(loss)
-        self.scaler.step(self.compiled_optimizer)
-        self.scaler.update()
-        return self.eval(y, objective)
