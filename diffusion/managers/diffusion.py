@@ -12,7 +12,7 @@ try:
 except ImportError:
     GradScaler = NotImplemented
 
-from .protocols import DiffusionData, DiffusionModule, EMAOptimizer
+from .protocols import DiffusionData, DiffusionModule
 
 
 class DiffusionManager(_Manager[Module], abc.ABC):
@@ -306,6 +306,7 @@ class Manager(DiffusionManager[DM]):
         - scaler: An optional `GradScaler` object to use half precision
         - use_fp16: A `bool` flag to use half precision
     """
+    autocaster: Optional[autocast]  # type: ignore
     scaler: Optional[GradScaler]  # type: ignore
 
     @property
@@ -320,15 +321,16 @@ class Manager(DiffusionManager[DM]):
     def use_fp16(self) -> bool:
         return self.scaler is not None
 
-    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
+    def __init__(self, model: DM, optimizer: Optional[Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
 
         # initialize fp16 scaler
         if use_fp16:
             assert GradScaler is not NotImplemented, _raise(ImportError("The `torch.cuda.amp` module is not available."))
+            self.autocaster = autocast('cpu')
             self.scaler = GradScaler()  # type: ignore
         else:
-            self.scaler = None
+            self.autocaster = self.scaler = None
 
     def convert(self) -> None:
         if not hasattr(self, 'scaler'):
@@ -352,23 +354,18 @@ class Manager(DiffusionManager[DM]):
         predicted_noise, _ = self.forward(data)
         return self.raw_model.sampling_step(data, i, predicted_obj=predicted_noise, return_noise=return_noise)
 
-    @torch.no_grad()
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
-        if isinstance(self.optimizer, EMAOptimizer):
-            with cast(EMAOptimizer, self.compiled_optimizer).use_ema_parameters():
-                return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
-        else:
-            return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
-
     def to(self, device: torch.device) -> None:
         if device.type != 'cuda' and self.use_fp16:
-            view.warnings.warn("The `GradScaler` is only available on CUDA devices. Disabling half precision.")
-            self.scaler = None
+            self.autocaster = autocast('cpu')
+        elif self.use_fp16:
+            self.autocaster = autocast('cuda')
         return super().to(device)
 
     def train_step(self, x_train: Union[torch.Tensor, Any], y_train: Union[torch.Tensor, Any], *, forward_diffusion: bool = True) -> dict[str, float]:
         if not self.use_fp16:
             return super().train_step(x_train, y_train, forward_diffusion=forward_diffusion)
+        else:
+            assert self.autocaster is not None, _raise(RuntimeError("The `autocaster` is not available when using fp16."))
 
         # forward diffusion sampling
         if forward_diffusion:
@@ -376,7 +373,7 @@ class Manager(DiffusionManager[DM]):
             x_t, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
 
         # forward pass
-        with autocast('cuda'):
+        with self.autocaster:
             y, loss = self.forward(x_t, objective)
         assert loss is not None, _raise(TypeError("Loss cannot be fetched."))
 
