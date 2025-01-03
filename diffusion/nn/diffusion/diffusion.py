@@ -1,7 +1,7 @@
 import abc, torch
 from typing import Any, Generic, TypeVar, overload
 
-from .protocols import TimedData
+from .protocols import DiffusionData
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 
@@ -14,20 +14,20 @@ class TimedModule(torch.nn.Module, abc.ABC):
     * Abstract class
 
     - method to implement:
-        - unpack_data: The method that accepts inputs perform to `.protocols.TimedData` to unpack the given inputs and passed to `forward` method
+        - unpack_data: The method that accepts inputs perform to `DiffusionData` to unpack the given inputs and passed to `forward` method
     """
 
-    def __call__(self, x_in: TimedData, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, x_in: DiffusionData, *args: Any, **kwargs: Any) -> Any:
         data = self.unpack_data(x_in)
         return super().__call__(*data, *args, **kwargs)
 
     @abc.abstractmethod
-    def unpack_data(self, x_in: TimedData) -> tuple[Any, ...]:
+    def unpack_data(self, x_in: DiffusionData) -> tuple[Any, ...]:
         """
-        Method to unpack `TimedData`, the unpacked data will be passed as positional arguments to `forward` method
+        Method to unpack `DiffusionData`, the unpacked data will be passed as positional arguments to `forward` method
 
         - Parameters:
-            x_in: The `TimedData` to unpack
+            x_in: The `DiffusionData` to unpack
         - Returns: A `tuple` of returned unpacked data
         """
         return NotImplemented
@@ -78,7 +78,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def forward(self, data: TimedData, /) -> torch.Tensor:
+    def forward(self, data: DiffusionData, /) -> torch.Tensor:
         # check model type
         if isinstance(self.model, TimedModule):  # wrapped `TimedModule` model
             return self.model(data)
@@ -102,21 +102,21 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
         ...
 
     @overload
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
-    def sampling_step(self, data: TimedData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 
         - Parameters:
-            - data: A `TimedData` object
+            - data: A `DiffusionData` object
             - i: An `int` of current time step
             - predicted_noise: An optional `torch.Tensor` of predicted noise
             - return_noise: A `bool` flag to return predicted noise

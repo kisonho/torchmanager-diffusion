@@ -1,9 +1,8 @@
 import torch
 from typing import TypeVar
 
-from diffusion.data import DiffusionData
-from diffusion.scheduling.space import BetaSpace
 from .diffusion import DiffusionModule, TimedModule
+from .protocols import BetaSpace, DiffusionData
 
 Module = TypeVar('Module', bound=TimedModule)
 

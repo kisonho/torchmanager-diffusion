@@ -2,8 +2,7 @@ import torch
 from functools import partial
 from typing import Type
 
-from diffusion.nn import Attention, ConvNextBlock, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings, TimedModule
-from diffusion.nn.diffusion.protocols import TimedData
+from .protocols import Attention, ConvNextBlock, LinearAttention, PreNorm, Residual, ResnetBlock, SinusoidalPositionEmbeddings, TimedData, TimedModule
 
 
 class UNet(torch.nn.Module):
