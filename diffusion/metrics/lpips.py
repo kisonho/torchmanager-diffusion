@@ -2,7 +2,6 @@ from lpips import LPIPS as _LPIPS
 from torchmanager.metrics import Metric
 from torchmanager_core import torch
 from torchmanager_core.typing import Any, Enum
-from typing import Optional
 
 
 class LPIPSNet(Enum):
@@ -21,14 +20,12 @@ class LPIPS(Metric):
     """
     lpips: _LPIPS
 
-    def __init__(self, net: LPIPSNet = LPIPSNet.ALEX, target: Optional[str] = None) -> None:
+    def __init__(self, net: LPIPSNet = LPIPSNet.ALEX, target: str | None = None) -> None:
         super().__init__(target=target)
         self.lpips = _LPIPS(net=net.value, verbose=False)  # type: ignore
         self.lpips.eval()
 
     @torch.no_grad()
     def forward(self, input: Any, target: Any) -> torch.Tensor:
-        gt = target
-        img = input
-        lpips: torch.Tensor = self.lpips(gt, img)
+        lpips: torch.Tensor = self.lpips(target, input)
         return lpips.squeeze().mean()
