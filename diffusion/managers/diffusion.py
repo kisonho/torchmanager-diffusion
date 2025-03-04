@@ -328,8 +328,9 @@ class Manager(DiffusionManager[DM]):
         elif not use_fp16 and self.scaler is not None:
             self.scaler = None
 
-    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False) -> None:
+    def __init__(self, model: DM, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False, *, accumulative_steps: int = 1) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
+        self.accumulation_steps = accumulative_steps
 
         # initialize fp16 scaler
         if use_fp16:
