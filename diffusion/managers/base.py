@@ -96,7 +96,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 self.model = self.raw_model
                 self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
                 devices.empty_cache()
-
     @overload
     @abc.abstractmethod
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor:
@@ -212,22 +211,8 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
                 x = self.sampling(int(x_test.shape[0]), noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=False, **kwargs)
                 x = torch.cat([img.unsqueeze(0) for img in x])
-                x = devices.move_to_device(x, device)
-                y_test = devices.move_to_device(y_test, device)
-                step_summary: dict[str, float] = {}
-
-                # forward metrics
-                for name, fn in self.compiled_metrics.items():
-                    if name.startswith("val_"):
-                        name = name.replace("val_", "")
-                    elif "loss" in name:
-                        continue
-                    try:
-                        fn(x, y_test)
-                        step_summary[name] = float(fn.result.detach())
-                    except Exception as metric_error:
-                        runtime_error = errors.MetricError(name)
-                        raise runtime_error from metric_error
+                x = devices.move_to_device(x, y_test.device)
+                step_summary = self.eval(x, y_test)
 
                 # update progress bar
                 if progress_bar is not None:
