@@ -294,7 +294,19 @@ class Manager(DiffusionManager[DM]):
         - scaler: An optional `GradScaler` object to use half precision
         - use_fp16: A `bool` flag to use half precision
     """
+    __accumulation_steps: int
     scaler: Optional[GradScaler]  # type: ignore
+
+    @property
+    def accumulation_steps(self) -> int:
+        return self.__accumulation_steps
+
+    @accumulation_steps.setter
+    def accumulation_steps(self, s: int) -> None:
+        if s < 1:
+            raise ValueError("The accumulation steps must be a positive integer.")
+        else:
+            self.__accumulation_steps = s
 
     @property
     def time_steps(self) -> int:
@@ -335,6 +347,10 @@ class Manager(DiffusionManager[DM]):
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         return self.raw_model.forward_diffusion(data, t, condition=condition)
+
+    def optimize(self) -> None:
+        if self.current_batch % self.accumulation_steps == 0:
+            return super().optimize()
 
     @overload
     def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
