@@ -23,7 +23,7 @@ class Manager(DiffusionManager[DM]):
         - use_fp16: A `bool` flag to use half precision
     """
     __accumulation_steps: int
-    scaler: Optional[GradScaler]  # type: ignore
+    scaler: GradScaler | None  # type: ignore
 
     @property
     def accumulation_steps(self) -> int:
