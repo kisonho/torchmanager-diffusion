@@ -1,7 +1,12 @@
+from typing import Collection
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torchmanager import losses, metrics
-from torchmanager_core import torch, view, _raise
+from torchmanager.callbacks import Callback
+from torchmanager.data import Dataset
+from torchmanager_core import devices, torch, view, _raise
 from torchmanager_core.typing import Any, TypeVar, cast, overload
 
 from .base import DiffusionManager
@@ -23,6 +28,7 @@ class Manager(DiffusionManager[DM]):
         - use_fp16: A `bool` flag to use half precision
     """
     __accumulation_steps: int
+    __current_batch: int
     scaler: GradScaler | None  # type: ignore
 
     @property
@@ -35,6 +41,17 @@ class Manager(DiffusionManager[DM]):
             raise ValueError("The accumulation steps must be a positive integer.")
         else:
             self.__accumulation_steps = s
+
+    @property
+    def current_batch(self) -> int:
+        return self.__current_batch
+
+    @current_batch.setter
+    def current_batch(self, b: int) -> None:
+        if b < 0:
+            raise ValueError(f"The batch index must be a non_negative integer, got {b}.")
+        else:
+            self.__current_batch = b
 
     @property
     def time_steps(self) -> int:
@@ -56,7 +73,7 @@ class Manager(DiffusionManager[DM]):
         elif not use_fp16 and self.scaler is not None:
             self.scaler = None
 
-    def __init__(self, model: DM, optimizer: torch.optim.Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False, *, accumulative_steps: int = 1) -> None:
+    def __init__(self, model: DM, optimizer: Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False, *, accumulative_steps: int = 1) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
         self.accumulation_steps = accumulative_steps
 
@@ -66,6 +83,10 @@ class Manager(DiffusionManager[DM]):
             self.scaler = GradScaler()  # type: ignore
         else:
             self.scaler = None
+
+    def _train(self, dataset: DataLoader[Any] | Dataset[Any] | Collection[Any], /, iterations: int | None = None, *args, device: torch.device = devices.CPU, use_multi_gpus: bool = False, callbacks_list: list[Callback] = [], **kwargs) -> dict[str, float]:
+        self.current_batch = 0
+        return super()._train(dataset, iterations, *args, device=device, use_multi_gpus=use_multi_gpus, callbacks_list=callbacks_list, **kwargs)
 
     def convert(self) -> None:
         if not hasattr(self, 'scaler'):
