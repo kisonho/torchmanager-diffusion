@@ -140,18 +140,21 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range), disable=not show_verbose)
 
         # sampling loop time step
-        for i, t in enumerate(sampling_range):
-            # fetch data
-            t = torch.full((num_images,), t, dtype=torch.long, device=imgs.device)
+        try:
+            for i, t in enumerate(sampling_range):
+                # fetch data
+                t = torch.full((num_images,), t, dtype=torch.long, device=imgs.device)
 
-            # append to predicitions
-            x = DiffusionData(imgs, t, condition=condition)
-            y = self.sampling_step(x, len(sampling_range) - i)
-            imgs = y.to(imgs.device)
-            progress_bar.update()
+                # append to predicitions
+                x = DiffusionData(imgs, t, condition=condition)
+                y = self.sampling_step(x, len(sampling_range) - i)
+                imgs = y.to(imgs.device)
+                progress_bar.update()
 
-        # reset model and loss
-        return [img for img in imgs]
+            # reset model and loss
+            return [img for img in imgs]
+        finally:
+            progress_bar.close()
 
     @torch.no_grad()
     def test(self, dataset: DataLoader[torch.Tensor] | Dataset[torch.Tensor], *args: Any, sampling_images: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
@@ -184,7 +187,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         # initialize
         summary: dict[str, float] = {}
         batched_len = dataset.batched_len if isinstance(dataset, Dataset) else len(dataset)
-        progress_bar = view.tqdm(total=batched_len) if show_verbose else None
 
         # reset loss function and metrics
         for _, m in self.metric_fns.items():
@@ -198,7 +200,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             self.model.eval()
 
             # batch loop
-            for x_test, y_test in dataset:
+            for b, (x_test, y_test) in enumerate(dataset):
                 # move x_test, y_test to device
                 if not use_multi_gpus:
                     x_test = devices.move_to_device(x_test, device)
@@ -207,17 +209,24 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 assert isinstance(y_test, torch.Tensor), "The target must be a valid `torch.Tensor`."
 
                 # sampling
+                view.logger.info(f"Sampling images {b + 1}/{batched_len}...")
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
-                x = self.sampling(int(x_test.shape[0]), noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=False, **kwargs)
+                x = self.sampling(int(x_test.shape[0]), noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, y_test.device)
                 step_summary = self.eval(x, y_test)
 
-                # update progress bar
-                if progress_bar is not None:
-                    progress_bar.set_postfix(step_summary)
-                    progress_bar.update()
+                # initialize summary info
+                summary_info: str = f"Step {b + 1}/{batched_len}: "
+
+                # add metrics to summary
+                for i, (name, value) in enumerate(step_summary.items()):
+                    summary_info += ", " if i > 0 else ""
+                    summary_info += f"{name}={value:.4f}"
+
+                # log summary info
+                view.logger.info(summary_info)
 
             # summarize
             for name, fn in self.metric_fns.items():
@@ -239,10 +248,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             runtime_error = errors.TestingError()
             raise runtime_error from error
         finally:
-            # close progress bar
-            if progress_bar is not None:
-                progress_bar.close()
-
             # empty cache
             if empty_cache:
                 self.to(cpu)
