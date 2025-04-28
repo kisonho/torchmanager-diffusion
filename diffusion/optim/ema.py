@@ -1,24 +1,26 @@
 import copy, torch
+from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer
 from typing import Any, Callable, Generic, TypeVar
 
-M = TypeVar('M', bound=torch.nn.Module)
 O = TypeVar('O', bound=Optimizer)
 
 
-class EMAOptimizer(Optimizer, Generic[O, M]):
+class EMAOptimizer(Optimizer, Generic[O]):
     """
     An optimizer wrapper that maintains Exponential Moving Average (EMA) of model parameters.
 
     - Properties:
         - optimizer: The base optimizer to wrap.
         - ema_decay: The decay factor for EMA.
-        - model: The model whose parameters will be used for EMA.
-        - ema_model: The model whose parameters will be used for EMA.
+        - params: The original parameters tracked.
+        - ema_params: The parameters that will be used for EMA.
     """
     __ema_decay: float
     base_optimizer: O
+    ema_params: list[Parameter]
     is_ema_parameters: bool
+    params: list[Parameter]
 
     @property
     def ema_decay(self) -> float:
@@ -30,7 +32,7 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
             raise ValueError("EMA decay should be in the range (0, 1).")
         self.__ema_decay = value
 
-    def __init__(self, optimizer: O, model: M, *, defaults: dict[str, Any] = {}, ema_decay: float = 0.999) -> None:
+    def __init__(self, optimizer: O, parameters: list[Parameter], *, defaults: dict[str, Any] = {}, ema_decay: float = 0.999) -> None:
         """
         Wrap a base optimizer and maintain Exponential Moving Average (EMA) of model parameters.
 
@@ -41,16 +43,17 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         """
         self.base_optimizer = optimizer
         self.ema_decay = ema_decay
+        self.ema_params = copy.deepcopy(parameters)
         self.is_ema_parameters = False
-        self.model = model
+        self.params = parameters
 
         # Create a deep copy of model parameters for EMA
-        self.ema_model = copy.deepcopy(model)
-        for param in self.ema_model.parameters():
+        self.ema_params = copy.deepcopy(parameters)
+        for param in self.ema_params:
             param.requires_grad = False  # EMA parameters should not be trainable
-        super().__init__(self.ema_model.parameters(), optimizer.defaults)
+        super().__init__(self.ema_params, optimizer.defaults)
 
-    def __enter__(self) -> 'EMAOptimizer[O, M]':
+    def __enter__(self) -> 'EMAOptimizer[O]':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -80,11 +83,12 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         Update the EMA parameters using the current model parameters.
         """
         # move ema model to the same device as the model
-        self.ema_model = self.ema_model.to(next(self.model.parameters()).device)
+        for ema_param, param in zip(self.ema_params, self.params):
+            ema_param.data = ema_param.data.to(param.device)
 
         # ema update
         with torch.no_grad():
-            for ema_param, param in zip(self.ema_model.parameters(), self.model.parameters()):
+            for ema_param, param in zip(self.ema_params, self.params):
                 ema_param.data.mul_(self.ema_decay).add_(param.data, alpha=(1.0 - self.ema_decay))
 
     def state_dict(self) -> dict[str, Any]:
@@ -94,8 +98,10 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
         Returns: A `dict` containing the state of the optimizer and EMA model with keys in `str`.
         """
         return {
+            'ema_params': self.ema_params,
             'optimizer': self.base_optimizer.state_dict(),
-            'ema_model': self.ema_model.state_dict()
+            'params': self.params,
+            'ema_decay': self.ema_decay,
         }
 
     def load_state_dict(self, state_dict: dict[str, Any]) -> None:
@@ -106,17 +112,19 @@ class EMAOptimizer(Optimizer, Generic[O, M]):
             - state_dict: The state `dict` containing both optimizer and EMA states with keys in `str`.
         """
         self.base_optimizer.load_state_dict(state_dict['optimizer'])
-        self.ema_model.load_state_dict(state_dict['ema_model'])
+        self.ema_params = state_dict['ema_params']
+        self.ema_decay = state_dict['ema_decay']
+        self.params = state_dict['params']
 
     def swap_parameters(self) -> None:
         """
         Swap the model's parameters with the EMA parameters for evaluation.
         """
-        for ema_param, param in zip(self.ema_model.parameters(), self.model.parameters()):
+        for ema_param, param in zip(self.ema_params, self.params):
             param.data, ema_param.data = ema_param.data, param.data
         self.is_ema_parameters = not self.is_ema_parameters
 
-    def use_ema_parameters(self) -> 'EMAOptimizer[O, M]':
+    def use_ema_parameters(self) -> 'EMAOptimizer[O]':
         """
         Temporarily replace the model parameters with the EMA parameters.
         Use this during evaluation.
