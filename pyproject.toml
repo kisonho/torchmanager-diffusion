@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "torchmanager-diffusion"
-version = "1.2rc1"
-description = "Torchmanager Implementation for Diffusion Model (v1.2 Release Candidate)"
+version = "1.2rc2"
+description = "Torchmanager Implementation for Diffusion Model (v1.2 Release Candidate 2)"
 authors = ["Kison Ho <unfit-gothic.0q@icloud.com>"]
 packages = [
     { include = "diffusion" }
