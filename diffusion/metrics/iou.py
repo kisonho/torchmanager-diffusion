@@ -59,4 +59,6 @@ class MIoU(MeanIoU, Generic[Module]):
 
             # segmentation
             x = self.segmentation_network(x)
+            x = x[self._target] if self._target is not None and isinstance(x, dict) else x
+            y = y.squeeze(1)
             return super().forward(x, y)

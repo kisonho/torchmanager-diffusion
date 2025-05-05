@@ -67,12 +67,13 @@ class Case0100(unittest.TestCase):
         # load metric
         seg_model = models.segmentation.deeplabv3_resnet101()
         assert isinstance(seg_model, torch.nn.Module), "The pre-trained model is not a valid PyTorch model."
-        seg_model = seg_model.eval()
-        miou_fn = MIoU(seg_model)
+        gpu = torch.device('mps')
+        seg_model = seg_model.to(gpu).eval()
+        miou_fn = MIoU(seg_model, target="out")
 
         # generate fake data
-        input = torch.randn(4, 3, 256, 256)
-        target = torch.randint(0, 80, size=(16, 1, 1024, 2048))
+        input = torch.randn(1, 3, 1024, 2048, device=gpu)
+        target = torch.randint(0, 80, size=(1, 1, 1024, 2048), device=gpu)
         result = float(miou_fn(input, target))
         self.assertGreaterEqual(result, 0)
 
