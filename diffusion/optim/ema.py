@@ -1,9 +1,26 @@
 import copy, torch
 from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypedDict, TypeVar, cast
 
 O = TypeVar('O', bound=Optimizer)
+
+
+class EMAState(TypedDict):
+    """
+    A dictionary to store the state of the EMA optimizer.
+
+    - Properties:
+        - ema_params: The parameters used for EMA.
+        - optimizer: The state of the base optimizer.
+        - params: The original parameters tracked.
+        - ema_decay: The decay factor for EMA.
+    """
+    optim_state: dict[str, Any]
+    ema_decay: float
+    ema_params: list[Parameter]
+    base_optimizer: Optimizer
+    params: list[Parameter]
 
 
 class EMAOptimizer(Optimizer, Generic[O]):
@@ -62,6 +79,19 @@ class EMAOptimizer(Optimizer, Generic[O]):
         """
         if self.is_ema_parameters:
             self.swap_parameters()
+
+    def __getstate__(self) -> EMAState:
+        optim_state = super().__getstate__()
+        full_state = EMAState(optim_state=optim_state, ema_decay=self.ema_decay, ema_params=self.ema_params, base_optimizer=self.base_optimizer, params=self.params)
+        return full_state
+
+    def __setstate__(self, state: EMAState) -> None:
+        super().__setstate__(state['optim_state'])
+        self.ema_decay = state['ema_decay']
+        self.ema_params = state['ema_params']
+        self.base_optimizer = cast(O, state['base_optimizer'])
+        self.params = state['params']
+        self.is_ema_parameters = False
 
     def step(self, closure: Callable[[], float] | None = None) -> float | None:
         """
