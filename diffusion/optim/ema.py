@@ -1,7 +1,7 @@
 import copy, torch
 from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer
-from typing import Any, Callable, Generic, TypedDict, TypeVar, cast
+from typing import Any, Callable, Iterable, Generic, TypedDict, TypeVar, cast
 
 O = TypeVar('O', bound=Optimizer)
 
@@ -18,9 +18,9 @@ class EMAState(TypedDict):
     """
     optim_state: dict[str, Any]
     ema_decay: float
-    ema_params: list[Parameter]
+    ema_params: Iterable[Parameter]
     base_optimizer: Optimizer
-    params: list[Parameter]
+    params: Iterable[Parameter]
 
 
 class EMAOptimizer(Optimizer, Generic[O]):
@@ -35,9 +35,9 @@ class EMAOptimizer(Optimizer, Generic[O]):
     """
     __ema_decay: float
     base_optimizer: O
-    ema_params: list[Parameter]
+    ema_params: Iterable[Parameter]
     is_ema_parameters: bool
-    params: list[Parameter]
+    params: Iterable[Parameter]
 
     @property
     def ema_decay(self) -> float:
@@ -49,13 +49,13 @@ class EMAOptimizer(Optimizer, Generic[O]):
             raise ValueError("EMA decay should be in the range (0, 1).")
         self.__ema_decay = value
 
-    def __init__(self, optimizer: O, parameters: list[Parameter], *, defaults: dict[str, Any] = {}, ema_decay: float = 0.999) -> None:
+    def __init__(self, optimizer: O, parameters: Iterable[Parameter], *, ema_decay: float = 0.999) -> None:
         """
         Wrap a base optimizer and maintain Exponential Moving Average (EMA) of model parameters.
 
         - Parameters:
             - optimizer: The base optimizer to wrap in `torch.optim.optimizer.Optimizer`.
-            - model: The model whose parameters will be used for EMA.
+            - parameters: The model parameters to track in `list[torch.nn.Parameter]`.
             - ema_decay: The decay factor for EMA in `float`.
         """
         self.base_optimizer = optimizer
