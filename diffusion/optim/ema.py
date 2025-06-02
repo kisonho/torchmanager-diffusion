@@ -68,7 +68,7 @@ class EMAOptimizer(Optimizer, Generic[O]):
         self.ema_params = copy.deepcopy(parameters)
         for param in self.ema_params:
             param.requires_grad = False  # EMA parameters should not be trainable
-        super().__init__(self.ema_params, optimizer.defaults)
+        super().__init__(self.params, optimizer.defaults)
 
     def __enter__(self) -> 'EMAOptimizer[O]':
         return self
