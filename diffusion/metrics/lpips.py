@@ -1,31 +1,39 @@
-from lpips import LPIPS as _LPIPS
-from torchmanager.metrics import Metric
+from torchmanager.metrics import LPIPS as _LPIPS, LPIPSNetType as LPIPSNet
 from torchmanager_core import torch
-from torchmanager_core.typing import Any, Enum
+from torchmanager_core.typing import Protocol, cast
+from torchvision import models
 
 
-class LPIPSNet(Enum):
-    """The pre-trained LPIPS network types"""
-    ALEX = 'alex'
-    SQUEEZE = 'squeeze'
-    VGG = 'vgg'
+class _FeatureExtractor(Protocol):
+    @property
+    def features(self) -> torch.nn.Sequential:
+        ...
 
 
-class LPIPS(Metric):
+class LPIPS(_LPIPS):
     """
-    The LPIPS metric
+    The wrapped LPIPS metric
 
     - Properties:
-        - lpips: The LPIPS module
+        - lpips: The LPIPS module to extract features
     """
-    lpips: _LPIPS
-
     def __init__(self, net: LPIPSNet = LPIPSNet.ALEX, target: str | None = None) -> None:
-        super().__init__(target=target)
-        self.lpips = _LPIPS(net=net.value, verbose=False)  # type: ignore
-        self.lpips.eval()
+        """
+        Constructor
 
-    @torch.no_grad()
-    def forward(self, input: Any, target: Any) -> torch.Tensor:
-        lpips: torch.Tensor = self.lpips(target, input)
-        return lpips.squeeze().mean()
+        - Parameters:
+            - net: The `LPIPSNet` to extract features
+            - target: A `str` of target name in `input` and `target` during direct calling
+        """
+        # load pretrained models
+        match net:
+            case LPIPSNet.ALEX:
+                feature_extractor = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
+            case LPIPSNet.VGG16:
+                feature_extractor = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+            case LPIPSNet.SQUEEZE:
+                feature_extractor = models.squeezenet1_0(weights=models.SqueezeNet1_0_Weights.IMAGENET1K_V1)
+
+        # initialize LPIPS
+        feature_extractor = cast(_FeatureExtractor, feature_extractor)
+        super().__init__(feature_extractor=feature_extractor.features, net_type=net, target=target)

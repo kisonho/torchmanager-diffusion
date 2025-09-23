@@ -1,7 +1,7 @@
 import copy, torch
 from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer
-from typing import Any, Callable, Iterable, Generic, TypedDict, TypeVar, cast
+from typing import Any, Callable, Iterable, Generic, Required, TypedDict, TypeVar, cast
 
 O = TypeVar('O', bound=Optimizer)
 
@@ -16,11 +16,11 @@ class EMAState(TypedDict):
         - params: The original parameters tracked.
         - ema_decay: The decay factor for EMA.
     """
-    optim_state: dict[str, Any]
-    ema_decay: float
-    ema_params: Iterable[Parameter]
-    base_optimizer: Optimizer
-    params: Iterable[Parameter]
+    optim_state: Required[dict[str, Any]]
+    ema_decay: Required[float]
+    ema_params: Required[Iterable[Parameter]]
+    base_optimizer: Required[Optimizer]
+    params: Required[Iterable[Parameter]]
 
 
 class EMAOptimizer(Optimizer, Generic[O]):
