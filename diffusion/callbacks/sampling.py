@@ -3,7 +3,7 @@ from torchmanager.callbacks import FrequencyCallback
 from torchmanager.data import Dataset
 from torchmanager_core import os, torch
 from torchmanager_core.protocols import Frequency
-from torchmanager_core.typing import Any, Generic, Optional, Sequence, TypeVar, Union
+from torchmanager_core.typing import Any, Generic, Sequence, TypeVar
 
 from .protocols import Samplable
 
@@ -25,16 +25,16 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
         - show_verbose: A `bool` for showing verbose.
         - use_multi_gpus: A `bool` flag of if using multi-gpus during sampling.
     """
-    device: Optional[Union[list[torch.device], torch.device]]
+    device: list[torch.device] | torch.device | None
     frequency: int
-    sampling_data: Union[Sequence[torch.Tensor], Dataset[torch.Tensor]]
+    sampling_data: Sequence[torch.Tensor] | Dataset[torch.Tensor]
     sampling_dir: str
-    sampling_range: Optional[Union[Sequence[int], range]]
+    sampling_range: Sequence[int] | range | None
     sampling_target: S
     show_verbose: bool
     use_multi_gpus: bool
 
-    def __init__(self, sampling_data: Union[Sequence[torch.Tensor], Dataset[torch.Tensor]], sampling_dir: str, sampling_target: S, *, frequency: int = 20, initial_epoch: int = 0, sampling_device: Optional[Union[list[torch.device], torch.device]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False, use_multi_gpus: bool = False) -> None:
+    def __init__(self, sampling_data: Sequence[torch.Tensor] | Dataset[torch.Tensor], sampling_dir: str, sampling_target: S, *, frequency: int = 20, initial_epoch: int = 0, sampling_device: list[torch.device] | torch.device | None = None, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False, use_multi_gpus: bool = False) -> None:
         """
         Construct sampling callback for Diffusion Models.
         
@@ -72,7 +72,7 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
             Image.fromarray(img).save(img_path)
             Image.fromarray(sample).save(sample_path)
 
-    def on_epoch_end(self, epoch: int, summary: dict[str, float] = {}, val_summary: Optional[dict[str, float]] = None) -> None:
+    def on_epoch_end(self, epoch: int, summary: dict[str, float] = {}, val_summary: dict[str, float] | None = None) -> None:
         if epoch % self.frequency == 0 and epoch != 0:
             super().on_epoch_end(epoch, summary, val_summary)
 

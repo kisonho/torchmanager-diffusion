@@ -40,7 +40,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
     * extends: `torch.nn.Module`
     * Abstract class
     * Generic: `Module`
-    * Implements: `managers.protocols.Diffusable`
 
     - Properties:
         - model: The model to use for diffusion in `Module`

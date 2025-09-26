@@ -2,7 +2,6 @@ import argparse
 import torchmanager
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise
-from torchmanager_core.typing import Optional, Union
 
 from .protocols import DESCRIPTION
 
@@ -10,14 +9,14 @@ from .protocols import DESCRIPTION
 class DDPMEvalConfigs(_Configs):
     """Training Configurations"""
     batch_size: int
-    beta_scheduler: Optional[str]
+    beta_scheduler: str | None
     data_dir: str
     dataset: str
     device: torch.device
     image_size: int
     model: str
     show_verbose: bool
-    time_steps: Optional[int]
+    time_steps: int | None
     use_multi_gpus: bool
 
     def format_arguments(self) -> None:
@@ -41,7 +40,7 @@ class DDPMEvalConfigs(_Configs):
         view.logger.addHandler(console)
 
     @staticmethod
-    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
         parser.add_argument("model", type=str, help="The path for a pre-trained PyTorch model, default is `None`.")
