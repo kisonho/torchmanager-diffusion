@@ -1,8 +1,11 @@
-from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple
+from torchmanager_core import devices, torch
+from torchmanager_core.typing import Generic, NamedTuple, TypeVar
 
 
-class DiffusionData(NamedTuple):
+C = TypeVar('C')
+
+
+class DiffusionData(NamedTuple, Generic[C]):
     """
     The data for diffusion model
 
@@ -17,8 +20,9 @@ class DiffusionData(NamedTuple):
     """A `torch.Tensor` of the main data"""
     t: torch.Tensor
     """A `torch.Tensor` of the time"""
-    condition: torch.Tensor | None = None
-    """An optional `torch.Tensor` of the condition data"""
+    condition: C | None = None
+    """An optional `C` of the condition data"""
 
     def to(self, device: torch.device):
-        return DiffusionData(self.x.to(device), self.t.to(device), self.condition.to(device) if self.condition is not None else None)
+        condition = devices.move_to_device(self.condition, device)
+        return DiffusionData(self.x.to(device), self.t.to(device), condition)
