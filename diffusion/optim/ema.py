@@ -58,6 +58,7 @@ class EMAOptimizer(Optimizer, Generic[O]):
             - parameters: The model parameters to track in `list[torch.nn.Parameter]`.
             - ema_decay: The decay factor for EMA in `float`.
         """
+        parameters = list(parameters)
         self.base_optimizer = optimizer
         self.ema_decay = ema_decay
         self.ema_params = copy.deepcopy(parameters)
@@ -65,7 +66,6 @@ class EMAOptimizer(Optimizer, Generic[O]):
         self.params = parameters
 
         # Create a deep copy of model parameters for EMA
-        self.ema_params = copy.deepcopy(parameters)
         for param in self.ema_params:
             param.requires_grad = False  # EMA parameters should not be trainable
         super().__init__(self.params, optimizer.defaults)
