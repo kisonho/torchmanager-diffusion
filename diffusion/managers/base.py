@@ -96,6 +96,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 self.model = self.raw_model
                 self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
                 devices.empty_cache()
+
     @overload
     @abc.abstractmethod
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor:

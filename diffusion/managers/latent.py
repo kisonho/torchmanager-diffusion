@@ -55,7 +55,7 @@ class LDMManager(DiffusionManager[Module]):
         '''
         # initialize
         progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range)) if show_verbose else None
-        assert isinstance(self.model, FastSamplingDiffusionModule), "The model must be a `FastSamplingDiffusionModule` when using fast sampling."
+        assert isinstance(self.raw_model, FastSamplingDiffusionModule), f"The model with a type of `{type(self.model)}` does not support fast sampling."
 
         # sampling loop time step
         for i, tau in enumerate(sampling_range):
@@ -65,7 +65,7 @@ class LDMManager(DiffusionManager[Module]):
 
             # append to predicitions
             x = DiffusionData(x_t, t, condition=condition)
-            y = self.model.fast_sampling_step(x, tau, tau_minus_one)
+            y = self.raw_model.fast_sampling_step(x, tau, tau_minus_one)
             assert isinstance(y, torch.Tensor), "The output must be a valid `torch.Tensor`."
             x_t = y.to(x_t.device)
 
