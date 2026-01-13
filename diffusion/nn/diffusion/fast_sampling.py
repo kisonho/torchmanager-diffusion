@@ -8,6 +8,19 @@ Module = TypeVar('Module', bound=torch.nn.Module)
 
 
 class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
+    """
+    The diffusion model that supports fast sampling
+
+    * extends: `DiffusionModule`
+    * Abstract class
+    * Generic: `Module`
+
+    - Properties:
+        - `fast_sampling_steps`: An optional `list` of fast sampling steps for the diffusion process in `int`
+        - `fast_sampling`: A `bool` flag of if enables fast sampling during the diffusion process
+    - method to implement:
+        - `fast_sampling_step`: Samples a single time step using fast sampling algorithm.
+    """
     fast_sampling_steps: list[int] | None
 
     @property

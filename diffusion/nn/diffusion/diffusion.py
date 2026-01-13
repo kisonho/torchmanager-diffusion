@@ -40,7 +40,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
     * extends: `torch.nn.Module`
     * Abstract class
     * Generic: `Module`
-    * Implements: `managers.protocols.Diffusable`
 
     - Properties:
         - model: The model to use for diffusion in `Module`
@@ -94,7 +93,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
 
         - Parameters:
             - data: Any kind of noised data
-            - t: A `torch.Tensor` of the time step, sampling uniformly if not given
+            - t: A `torch.Tensor` of the time step
             - condition: An optional `torch.Tensor` of the condition to generate images
         - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and `Any` type of objective
         """

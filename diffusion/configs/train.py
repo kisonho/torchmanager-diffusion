@@ -1,6 +1,5 @@
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
-from torchmanager_core.typing import Optional, Union
 
 from .protocols import BetaScheduler, SDEType, DESCRIPTION
 
@@ -8,9 +7,9 @@ from .protocols import BetaScheduler, SDEType, DESCRIPTION
 class Configs(_Configs):
     """Basic Training Configurations"""
     batch_size: int
-    ckpt_path: Optional[str]
+    ckpt_path: str | None
     data_dir: str
-    devices: Optional[list[torch.device]]
+    devices: list[torch.device] | None
     epochs: int
     output_model: str
     show_verbose: bool
@@ -18,7 +17,7 @@ class Configs(_Configs):
     use_multi_gpus: bool
 
     @property
-    def default_device(self) -> Optional[torch.device]:
+    def default_device(self) -> torch.device | None:
         return None if self.devices is None else self.devices[0]
 
     def format_arguments(self) -> None:
@@ -46,7 +45,7 @@ class Configs(_Configs):
         assert self.time_steps > 0, _raise(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
 
     @staticmethod
-    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
         parser.add_argument("output_model", type=str, help="The path for the final PyTorch model.")
@@ -82,7 +81,7 @@ class Configs(_Configs):
 
 class DDPMTrainingConfigs(Configs):
     """Training Configurations for DDPM."""
-    beta_range: Optional[list[float]]
+    beta_range: list[float] | None
     beta_scheduler: BetaScheduler
 
     def format_arguments(self) -> None:
@@ -98,7 +97,7 @@ class DDPMTrainingConfigs(Configs):
         super().format_arguments()
 
     @staticmethod
-    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = Configs.get_arguments(parser)
 
@@ -122,7 +121,7 @@ class SDETrainingConfigs(Configs):
         super().format_arguments()
 
     @staticmethod
-    def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
+    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = Configs.get_arguments(parser)
 

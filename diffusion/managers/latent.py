@@ -2,10 +2,10 @@ from torch.utils.data import DataLoader
 from torchmanager.data import Dataset
 from torchmanager import losses, metrics
 from torchmanager_core import devices, torch, view
-from torchmanager_core.typing import Any, Optional, Sequence, TypeVar, Union, overload
+from torchmanager_core.typing import Any, Sequence, TypeVar, Union, overload
 
 from .diffusion import DiffusionManager
-from .protocols import DiffusionData, LatentDiffusionModule, LatentMode
+from .protocols import DiffusionData, FastSamplingDiffusionModule, LatentDiffusionModule, LatentMode
 
 Module = TypeVar('Module', bound=LatentDiffusionModule)
 
@@ -20,9 +20,9 @@ class LDMManager(DiffusionManager[Module]):
     - Properties:
         - model: An optional target `LatentDiffusionModule` to be trained
     """
-    model: Union[Module, torch.nn.DataParallel[Module]]
+    model: Module | torch.nn.DataParallel[Module]
 
-    def __init__(self, model: Module, time_steps: int, *, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
+    def __init__(self, model: Module, time_steps: int, *, optimizer: torch.optim.Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
 
@@ -39,7 +39,7 @@ class LDMManager(DiffusionManager[Module]):
         view.warnings.warn("The `LDMManager` is deprecated, use `nn.LatentDiffusionModule` instead.", DeprecationWarning)
 
     @torch.no_grad()
-    def fast_sampling(self, num_images: int, x_t: torch.Tensor, sampling_range: Sequence[int], condition: Optional[torch.Tensor] = None, *, show_verbose: bool = False) -> list[torch.Tensor]:
+    def fast_sampling(self, num_images: int, x_t: torch.Tensor, sampling_range: Sequence[int], condition: torch.Tensor | None = None, *, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images using fast sampling algorithm.
 
@@ -55,6 +55,7 @@ class LDMManager(DiffusionManager[Module]):
         '''
         # initialize
         progress_bar = view.tqdm(desc='Sampling loop time step', total=len(sampling_range)) if show_verbose else None
+        assert isinstance(self.raw_model, FastSamplingDiffusionModule), f"The model with a type of `{type(self.model)}` does not support fast sampling."
 
         # sampling loop time step
         for i, tau in enumerate(sampling_range):
@@ -64,7 +65,7 @@ class LDMManager(DiffusionManager[Module]):
 
             # append to predicitions
             x = DiffusionData(x_t, t, condition=condition)
-            y = self.model.fast_sampling_step(x, tau, tau_minus_one)
+            y = self.raw_model.fast_sampling_step(x, tau, tau_minus_one)
             assert isinstance(y, torch.Tensor), "The output must be a valid `torch.Tensor`."
             x_t = y.to(x_t.device)
 
@@ -76,7 +77,7 @@ class LDMManager(DiffusionManager[Module]):
         x_0 = x_t
         return [img for img in x_0]
 
-    def sampling(self, num_images: int, x_t: torch.Tensor, /, *, condition: Optional[torch.Tensor] = None, fast_sampling: bool = False, sampling_range: Optional[Union[Sequence[int], range]] = None, show_verbose: bool = False) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, /, *, condition: torch.Tensor | None = None, fast_sampling: bool = False, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
@@ -127,14 +128,14 @@ class LDMManager(DiffusionManager[Module]):
         return super().data_parallel(target_devices) and use_multi_gpus
 
     @overload
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, fast_sampling: bool = False, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, fast_sampling: bool = False, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         ...
 
     @overload
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, fast_sampling: bool = True, sampling_range: Sequence[int], device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = True, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, fast_sampling: bool = True, sampling_range: Sequence[int], device: torch.device | list[torch.device] | None = None, use_multi_gpus: bool = True, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         ...
 
-    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: Optional[torch.Tensor] = None, noises: Optional[torch.Tensor] = None, fast_sampling: bool = False, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, fast_sampling: bool = False, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         return super().predict(num_images, image_size, *args, condition=condition, noises=noises, fast_sampling=fast_sampling, sampling_range=sampling_range, device=device, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
 
     def reset(self, cpu: torch.device = devices.CPU) -> None:
@@ -153,14 +154,14 @@ class LDMManager(DiffusionManager[Module]):
         return super().train_step(z_x, z_y)
 
     @overload
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, fast_sampling: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, fast_sampling: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         ...
 
     @overload
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = True, fast_sampling: bool = True, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Sequence[int], device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = True, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = True, fast_sampling: bool = True, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int], device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = True, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         ...
 
-    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, fast_sampling: bool = False, sampling_shape: Optional[Union[int, tuple[int, ...]]] = None, sampling_range: Optional[Union[Sequence[int], range]] = None, device: Optional[Union[torch.device, list[torch.device]]] = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
+    def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, fast_sampling: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         """
         Test target model
 

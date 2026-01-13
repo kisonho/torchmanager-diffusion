@@ -1,10 +1,10 @@
 import torch
 from typing import TypeVar
 
-from .diffusion import DiffusionModule, TimedModule
+from .diffusion import DiffusionModule
 from .protocols import BetaSpace, DiffusionData
 
-Module = TypeVar('Module', bound=TimedModule)
+Module = TypeVar('Module', bound=torch.nn.Module)
 
 
 class DDPM(DiffusionModule[Module]):
@@ -24,15 +24,6 @@ class DDPM(DiffusionModule[Module]):
         self.beta_space = beta_space
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
-        """
-        Forward pass of diffusion model, sample noises
-
-        - Parameters:
-            - data: A clear image in `torch.Tensor`
-            - t: A `torch.Tensor` of the time step, sampling uniformly if not given
-            - condition: An optional condition in `torch.Tensor`
-        - Returns: A `tuple` of noisy images and sampled time step in `DiffusionData` and noises in `torch.Tensor`
-        """
         # initialize noises
         x_start = data.to(self.beta_space.device)
         noise = torch.randn_like(x_start, device=x_start.device)

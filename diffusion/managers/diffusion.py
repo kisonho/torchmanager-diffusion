@@ -1,4 +1,3 @@
-from typing import Collection
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.optim.optimizer import Optimizer
@@ -7,7 +6,7 @@ from torchmanager import losses, metrics
 from torchmanager.callbacks import Callback
 from torchmanager.data import Dataset
 from torchmanager_core import devices, torch, view, _raise
-from torchmanager_core.typing import Any, TypeVar, cast, overload
+from torchmanager_core.typing import Any, Collection, TypeVar, cast, overload
 
 from .base import DiffusionManager
 from .protocols import DiffusionData, DiffusionModule
