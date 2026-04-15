@@ -20,3 +20,5 @@ class SDEType(Enum):
         - Returns: An `SDE` instance.
         """
         return self.value(N)
+
+__all__ = ["SDEType"]

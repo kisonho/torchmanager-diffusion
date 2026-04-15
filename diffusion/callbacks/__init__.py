@@ -1,1 +1,3 @@
-from torchmanager.callbacks import *  # type: ignore
+from torchmanager import callbacks
+
+from .sampling import SamplingCallback

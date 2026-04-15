@@ -1,5 +1,5 @@
 from torchmanager.configs import Configs as _Configs
-from torchmanager_core import argparse, os, torch, view, _raise, VERSION as tm_version
+from torchmanager_core import argparse, os, torch, view, raise_error, VERSION as tm_version
 
 from .protocols import BetaScheduler, SDEType, DESCRIPTION
 
@@ -40,9 +40,9 @@ class Configs(_Configs):
             view.logger.addHandler(console)
 
         # assert formats
-        assert self.batch_size > 0, _raise(ValueError(f"Batch size must be a positive number, got {self.batch_size}."))
-        assert self.epochs > 0, _raise(ValueError(f"Epochs must be a positive number, got {self.epochs}."))
-        assert self.time_steps > 0, _raise(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
+        assert self.batch_size > 0, raise_error(ValueError(f"Batch size must be a positive number, got {self.batch_size}."))
+        assert self.epochs > 0, raise_error(ValueError(f"Epochs must be a positive number, got {self.epochs}."))
+        assert self.time_steps > 0, raise_error(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
 
     @staticmethod
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:

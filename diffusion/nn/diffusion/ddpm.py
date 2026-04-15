@@ -7,7 +7,7 @@ from .protocols import BetaSpace, DiffusionData
 Module = TypeVar('Module', bound=torch.nn.Module)
 
 
-class DDPM(DiffusionModule[Module]):
+class DDPMModule(DiffusionModule[Module]):
     """
     The main DDPM model
 
@@ -58,3 +58,7 @@ class DDPM(DiffusionModule[Module]):
             # Algorithm 2 line 4:
             y += torch.sqrt(posterior_variance_t) * noise
         return (y, predicted_noise) if return_noise else y
+
+__all__ = ["DDPMModule"]
+DDPM = DDPMModule
+

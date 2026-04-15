@@ -147,3 +147,5 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             predicted_noise = x_mean = data.x - f
             y = x_mean + G[:, None, None, None] * z
         return (y, predicted_noise) if return_noise else y
+
+__all__ = ["SDEModule"]

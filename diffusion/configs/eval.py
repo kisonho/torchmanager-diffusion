@@ -1,7 +1,7 @@
 import argparse
 import torchmanager
 from torchmanager.configs import Configs as _Configs
-from torchmanager_core import argparse, os, torch, view, _raise
+from torchmanager_core import argparse, os, torch, view, raise_error
 
 from .protocols import DESCRIPTION
 
@@ -27,10 +27,10 @@ class DDPMEvalConfigs(_Configs):
         self.model = os.path.normpath(self.model)
 
         # assert formats
-        assert self.batch_size > 0, _raise(ValueError(f"Batch size must be a positive number, got {self.batch_size}."))
-        assert self.image_size > 0, _raise(ValueError(f"Image size must be a positive number, got {self.image_size}."))
+        assert self.batch_size > 0, raise_error(ValueError(f"Batch size must be a positive number, got {self.batch_size}."))
+        assert self.image_size > 0, raise_error(ValueError(f"Image size must be a positive number, got {self.image_size}."))
         if self.time_steps is not None:
-            assert self.time_steps > 0, _raise(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
+            assert self.time_steps > 0, raise_error(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
 
         # format logging
         formatter = view.logging.Formatter("%(message)s")

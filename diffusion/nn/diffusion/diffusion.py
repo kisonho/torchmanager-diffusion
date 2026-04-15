@@ -122,3 +122,5 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         - Returns: A `torch.Tensor` of noised image if not returning noise or a `tuple` of noised image and predicted noise in `torch.Tensor` if returning noise
         """
         return NotImplemented
+
+__all__ = ["TimedModule", "DiffusionModule"]

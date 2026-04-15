@@ -55,3 +55,5 @@ class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
         - Returns: A `torch.Tensor` of the sampled image or a `tuple` of `torch.Tensor` of the sampled image and `torch.Tensor` of the noise
         '''
         ...
+
+__all__ = ["FastSamplingDiffusionModule"]

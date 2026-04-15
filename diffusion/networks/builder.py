@@ -1,5 +1,5 @@
-from torchmanager_core import torch, view
-from torchmanager_core.typing import Type, overload
+import torch
+from typing import Type, overload
 
 from .unet import TimedUNet, UNet
 
@@ -23,10 +23,7 @@ def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Co
         - dropout: A `float` of the dropout ratio
     - Returns: A `TimedUNet` or `Unet` which has both its input and output channel of the given `in_channels`
     """
-    model = TimedUNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb) if use_timed_data else UNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb)
-    view.logger.info(model)
-    view.logger.info("--------------------------------")
-    return model
+    return TimedUNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb) if use_timed_data else UNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb)
 
 
 def build_unet(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1) -> TimedUNet:
@@ -54,7 +51,10 @@ def build_unet_small(in_channels: int, conv_type: Type[torch.nn.Conv2d] = torch.
         - dropout: A `float` of the dropout ratio
     - Returns: A `Unet` which has both its input and output channel of the given `in_channels`
     """
-    model = UNet(32, channels=in_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout)
-    view.logger.info(model)
-    view.logger.info("--------------------------------")
-    return model
+    return UNet(32, channels=in_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout)
+
+__all__ = [
+    "build",
+    "build_unet",
+    "build_unet_small",
+]

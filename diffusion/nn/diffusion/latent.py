@@ -83,3 +83,5 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
             return self.decode(*args, **kwargs)
         elif mode == LatentMode.FORWARD:
             return super().__call__(*args, **kwargs)
+
+__all__ = ["LatentMode", "LatentDiffusionModule"]

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "torchmanager-diffusion"
-version = "1.3a1"
-description = "Torchmanager Implementation for Diffusion Model (v1.3 Alpha 1)"
+version = "1.3a2"
+description = "Torchmanager Implementation for Diffusion Model (v1.3 Alpha 2)"
 authors = ["Kison Ho <unfit-gothic.0q@icloud.com>"]
 packages = [
     { include = "diffusion" }
@@ -11,7 +11,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 einops = "*"
-torchmanager = "^1.5a1"
+torchmanager = { version = "^1.5b1", optional = true }
 torchvision = "*"
 
 [build-system]

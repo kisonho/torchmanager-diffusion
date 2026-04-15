@@ -1,6 +1,6 @@
+import torch
 from torch.nn import functional as F
-from torchmanager_core import torch
-from torchmanager_core.typing import NamedTuple
+from typing import NamedTuple
 
 
 class BetaSpace(NamedTuple):
@@ -116,3 +116,5 @@ def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Siz
     batch_size = t.shape[0]
     vals = vals.gather(-1, t-1)
     return vals.reshape(batch_size, *((1,) * (len(x_shape) - 1)))
+
+__all__ = ["BetaSpace"]

@@ -69,3 +69,5 @@ class SubVPSDE(VPSDE):
     def marginal_prob(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         mean, std = super().marginal_prob(x, t)
         return mean, std ** 2
+
+__all__ = ["VPSDE"]

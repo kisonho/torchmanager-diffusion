@@ -5,6 +5,8 @@ from torchmanager_core.typing import Any, TypeVar, Sequence, Sized, Union
 
 T = TypeVar("T")
 
+__all__ = ["UnsupervisedDataset"]
+
 
 class UnsupervisedDataset(Dataset[T]):
     """

@@ -168,3 +168,5 @@ class EMAOptimizer(Optimizer, Generic[O]):
         Zero the gradients of the base optimizer.
         """
         self.base_optimizer.zero_grad()
+
+__all__ = ["EMAState", "EMAOptimizer"]
