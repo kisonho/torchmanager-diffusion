@@ -1,6 +1,7 @@
 import torch
 from typing import Type, overload
 
+from .openai import OpenAIUNet
 from .unet import TimedUNet, UNet
 
 

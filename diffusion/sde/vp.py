@@ -70,4 +70,4 @@ class SubVPSDE(VPSDE):
         mean, std = super().marginal_prob(x, t)
         return mean, std ** 2
 
-__all__ = ["VPSDE"]
+__all__ = ["VPSDE", "SubVPSDE"]
