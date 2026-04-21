@@ -1,7 +1,7 @@
 from packaging.version import Version
 
 API = Version("v1.3")
-CURRENT = Version("v1.3a2")
+CURRENT = Version("v1.3a3")
 DESCRIPTION = f"Torchmanager Implementation for Diffusion Model ({CURRENT})"
 
 __all__ = ["API", "CURRENT", "DESCRIPTION"]

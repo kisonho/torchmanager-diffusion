@@ -18,10 +18,12 @@ class DDPMModule(DiffusionModule[Module]):
         - beta_space: A scheduled `BetaSpace`
     """
     beta_space: BetaSpace
+    with_condition: bool
 
-    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int) -> None:
+    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, *, with_condition: bool = False) -> None:
         super().__init__(model, time_steps)
         self.beta_space = beta_space
+        self.with_condition = with_condition
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # initialize noises
@@ -30,7 +32,8 @@ class DDPMModule(DiffusionModule[Module]):
         sqrt_alphas_cumprod_t = self.beta_space.sample_sqrt_alphas_cumprod(t, x_start.shape)
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(t, x_start.shape)
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
-        return DiffusionData(x, t, condition=condition), noise
+        xt = DiffusionData(x, t, condition=condition) if self.with_condition else DiffusionData(x, t)
+        return xt, noise
 
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """

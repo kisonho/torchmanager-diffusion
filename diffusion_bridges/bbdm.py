@@ -1,4 +1,11 @@
-from ._base import D, DiffusionData, E, FastSamplingDiffusionModule, LatentDiffusionModule, Module, torch
+import torch
+from diffusion.data import DiffusionData
+from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
+from typing import TypeVar
+
+Module = TypeVar('Module', bound=torch.nn.Module)
+E = TypeVar('E', bound=torch.nn.Module | None)
+D = TypeVar('D', bound=torch.nn.Module | None)
 
 
 class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module]):

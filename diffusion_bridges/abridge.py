@@ -1,9 +1,13 @@
-import math
+import math, torch
+from diffusion.data import DiffusionData
+from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
+from typing import  TypeVar
 
-from ._base import D, DiffusionData, E, FastSamplingDiffusionModule, Generic, LatentDiffusionModule, Module, torch
+Module = TypeVar('Module', bound=torch.nn.Module)
+E = TypeVar('E', bound=torch.nn.Module | None)
+D = TypeVar('D', bound=torch.nn.Module | None)
 
-
-class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module], Generic[Module, E, D]):
+class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module]):
     """
     The A-Bridge BBDM with algorithm in sec. 1 and 2 offered by Prof. Wang.
 

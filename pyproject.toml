@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "torchmanager-diffusion"
-version = "1.3a2"
-description = "Torchmanager Implementation for Diffusion Model (v1.3 Alpha 2)"
+version = "1.3a3"
+description = "Torchmanager Implementation for Diffusion Model (v1.3 Alpha 3)"
 authors = ["Kison Ho <unfit-gothic.0q@icloud.com>"]
 packages = [
-    { include = "diffusion" }
+    { include = "diffusion" },
+    { include = "diffusion_bridges" },
 ]
 readme = "README.md"
 
