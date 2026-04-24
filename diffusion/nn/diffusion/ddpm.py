@@ -62,6 +62,10 @@ class DDPMModule(DiffusionModule[Module]):
             y += torch.sqrt(posterior_variance_t) * noise
         return (y, predicted_noise) if return_noise else y
 
+    def to(self, *args, **kwargs) -> "DDPMModule":
+        super().to(*args, **kwargs)
+        self.beta_space = self.beta_space.to(*args, **kwargs)
+        return self
+
 __all__ = ["DDPMModule"]
 DDPM = DDPMModule
-

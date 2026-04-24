@@ -104,8 +104,8 @@ class BetaSpace(NamedTuple):
         """
         return torch.randint(start_index, time_steps+start_index, (batch_size,), device=self.device).long()
 
-    def to(self, device: torch.device):
-        return BetaSpace(self.betas.to(device))
+    def to(self, *args, **kwargs) -> "BetaSpace":
+        return BetaSpace(self.betas.to(*args, **kwargs))
 
 
 def _get_index_from_list(vals: torch.Tensor, t: torch.Tensor, x_shape: torch.Size) -> torch.Tensor:

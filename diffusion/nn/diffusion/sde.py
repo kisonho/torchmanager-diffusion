@@ -167,4 +167,10 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             predicted_score = score
         return (y, predicted_score) if return_noise else y
 
+    def to(self, *args, **kwargs) -> "SDEModule[Module, SDEType]":
+        super().to(*args, **kwargs)
+        if self.beta_space is not None:
+            self.beta_space = self.beta_space.to(*args, **kwargs)
+        return self
+
 __all__ = ["SDEModule"]

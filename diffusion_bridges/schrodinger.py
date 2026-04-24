@@ -91,9 +91,9 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
     def _gather_schedule(self, schedule: torch.Tensor, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         # Local code uses 1..T indexing for discrete sampling, while the stored
         # schedules are 0-indexed.
-        step = (t.long() - 1).clamp(min=0, max=self.time_steps - 1)
+        step = (t.to(device=schedule.device).long() - 1).clamp(min=0, max=self.time_steps - 1)
         gathered = schedule.index_select(0, step)
-        return self._expand_schedule(gathered, x)
+        return self._expand_schedule(gathered.to(x.device), x)
 
     @staticmethod
     def _gaussian_product_coef(sigma1: torch.Tensor, sigma2: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -107,6 +107,10 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
     def _predict_x0(self, xt: torch.Tensor, t: torch.Tensor, predicted_obj: torch.Tensor) -> torch.Tensor:
         std_fwd = self._gather_schedule(self.std_fwd, t, xt)
         return xt - std_fwd * predicted_obj
+
+    def forward(self, data: DiffusionData) -> torch.Tensor:
+        data = DiffusionData(data.x, data.t)
+        return super().forward(data)
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)

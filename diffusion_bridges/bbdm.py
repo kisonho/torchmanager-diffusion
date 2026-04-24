@@ -9,6 +9,10 @@ D = TypeVar('D', bound=torch.nn.Module | None)
 
 
 class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module]):
+    def forward(self, data: DiffusionData) -> torch.Tensor:
+        data = DiffusionData(data.x, data.t)
+        return super().forward(data)
+
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
     ]:
