@@ -434,7 +434,7 @@ class QKVAttention(nn.Module):
         return count_flops_attn(model, _x, y)
 
 
-class OpenAIUNet(th.nn.Module):
+class ConditionalUNet(th.nn.Module):
     """
     The full UNet model with attention and timestep embedding.
     :param in_channels: channels in the input Tensor.

@@ -1,4 +1,4 @@
-import math, numpy as np, torch
+import contextlib, math, numpy as np, torch
 from einops import repeat
 from torch import nn
 
@@ -109,6 +109,9 @@ class CheckpointFunction(torch.autograd.Function):
         ctx.run_function = run_function
         ctx.input_tensors = list(args[:length])
         ctx.input_params = list(args[length:])
+        ctx.cuda_autocast_enabled = torch.is_autocast_enabled("cuda")
+        ctx.cuda_autocast_dtype = torch.get_autocast_dtype("cuda") if ctx.cuda_autocast_enabled else None
+        ctx.cuda_autocast_cache_enabled = torch.is_autocast_cache_enabled() if ctx.cuda_autocast_enabled else None
 
         with torch.no_grad():
             output_tensors = ctx.run_function(*ctx.input_tensors)
@@ -117,7 +120,36 @@ class CheckpointFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, *output_grads):
         ctx.input_tensors = [x.detach().requires_grad_(True) for x in ctx.input_tensors]
-        with torch.enable_grad():
+        low_precision_cuda_inputs = [
+            x.dtype
+            for x in ctx.input_tensors
+            if x.is_cuda and x.is_floating_point() and x.dtype in (torch.float16, torch.bfloat16)
+        ]
+        has_float32_cuda_params = any(
+            p.is_cuda and p.is_floating_point() and p.dtype == torch.float32
+            for p in ctx.input_params
+        )
+        cuda_autocast_enabled = ctx.cuda_autocast_enabled or (
+            bool(low_precision_cuda_inputs) and has_float32_cuda_params
+        )
+        cuda_autocast_dtype = ctx.cuda_autocast_dtype or (
+            low_precision_cuda_inputs[0] if low_precision_cuda_inputs else torch.float16
+        )
+        cuda_autocast_cache_enabled = (
+            ctx.cuda_autocast_cache_enabled
+            if ctx.cuda_autocast_cache_enabled is not None
+            else True
+        )
+        autocast_context = (
+            torch.amp.autocast(
+                "cuda",
+                dtype=cuda_autocast_dtype,
+                cache_enabled=cuda_autocast_cache_enabled,
+            )
+            if cuda_autocast_enabled
+            else contextlib.nullcontext()
+        )
+        with torch.enable_grad(), autocast_context:
             # Fixes a bug where the first op in run_function modifies the
             # Tensor storage in place, which is not allowed for detach()'d
             # Tensors.
