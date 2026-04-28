@@ -35,7 +35,7 @@ class DDPMModule(DiffusionModule[Module]):
         xt = DiffusionData(x, t, condition=condition) if self.with_condition else DiffusionData(x, t)
         return xt, noise
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 
@@ -52,7 +52,7 @@ class DDPMModule(DiffusionModule[Module]):
 
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean
-        predicted_noise, _ = self(data)
+        predicted_noise = self(data) if predicted_obj is None else predicted_obj
         assert isinstance(predicted_noise, torch.Tensor), "The model must return a `torch.Tensor` as predicted noise."
         y: torch.Tensor = sqrt_recip_alphas_t * (data.x - betas_t * predicted_noise / sqrt_one_minus_alphas_cumprod_t)
         if i > 1:
