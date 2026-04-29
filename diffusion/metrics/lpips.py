@@ -1,6 +1,6 @@
 from torchmanager.metrics import LPIPS as _LPIPS, LPIPSNetType as LPIPSNet
 from torchmanager_core import torch
-from torchmanager_core.typing import Protocol, cast
+from torchmanager_core.typing import Any, Protocol, cast
 from torchvision import models
 
 
@@ -37,3 +37,12 @@ class LPIPS(_LPIPS):
         # initialize LPIPS
         feature_extractor = cast(_FeatureExtractor, feature_extractor)
         super().__init__(feature_extractor=feature_extractor.features, net_type=net, target=target)
+
+    def forward_features(self, x: torch.Tensor) -> Any:
+        # check channels
+        c = x.shape[1]
+
+        # expand if only one channel detected for the input
+        if c == 1:
+            x.expand((-1, c * 3, -1, -1))
+        return super().forward_features(x)
