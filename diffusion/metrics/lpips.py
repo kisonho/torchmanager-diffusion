@@ -1,4 +1,4 @@
-from torchmanager.metrics import LPIPS as _LPIPS, LPIPSNetType as LPIPSNet
+from torchmanager.metrics import Metric, LPIPS as _LPIPS, LPIPSNetType as LPIPSNet
 from torchmanager_core import torch
 from torchmanager_core.typing import Any, Protocol, cast
 from torchvision import models
@@ -32,7 +32,7 @@ class LPIPS(_LPIPS):
             case LPIPSNet.VGG16:
                 feature_extractor = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
             case LPIPSNet.SQUEEZE:
-                feature_extractor = models.squeezenet1_0(weights=models.SqueezeNet1_0_Weights.IMAGENET1K_V1)
+                feature_extractor = models.squeezenet1_1(weights=models.SqueezeNet1_1_Weights.IMAGENET1K_V1)
 
         # initialize LPIPS
         feature_extractor = cast(_FeatureExtractor, feature_extractor)
@@ -44,5 +44,7 @@ class LPIPS(_LPIPS):
 
         # expand if only one channel detected for the input
         if c == 1:
-            x.expand((-1, c * 3, -1, -1))
+            x = x.expand((-1, c * 3, -1, -1))
         return super().forward_features(x)
+    
+__all__ = ['LPIPS']

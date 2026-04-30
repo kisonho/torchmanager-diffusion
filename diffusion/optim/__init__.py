@@ -1,3 +1,44 @@
-from torch.optim import *  # type: ignore
+from torch.optim import (
+    ASGD,
+    LBFGS,
+    NAdam,
+    Optimizer,
+    RAdam,
+    RMSprop,
+    Rprop,
+    SGD,
+    SparseAdam,
+    Adadelta,
+    Adafactor,
+    Adagrad,
+    Adam,
+    AdamW,
+    Adamax,
+    Muon,
+    lr_scheduler,
+    swa_utils,
+)
 
 from .ema import EMAOptimizer
+
+__all__ = [
+    "ASGD",
+    "LBFGS",
+    "NAdam",
+    "Optimizer",
+    "RAdam",
+    "RMSprop",
+    "Rprop",
+    "SGD",
+    "SparseAdam",
+    "Adadelta",
+    "Adafactor",
+    "Adagrad",
+    "Adam",
+    "AdamW",
+    "Adamax",
+    "Muon",
+    "lr_scheduler",
+    "swa_utils",
+    "EMAOptimizer",
+]

@@ -4,7 +4,7 @@ from torchmanager_core import argparse, os, torch, view, raise_error, VERSION as
 from .protocols import BetaScheduler, SDEType, DESCRIPTION
 
 
-class Configs(_Configs):
+class TrainingConfigs(_Configs):
     """Basic Training Configurations"""
     batch_size: int
     ckpt_path: str | None
@@ -79,7 +79,7 @@ class Configs(_Configs):
             view.logger.info(f"From checkpoint: {self.ckpt_path}")
 
 
-class DDPMTrainingConfigs(Configs):
+class DDPMTrainingConfigs(TrainingConfigs):
     """Training Configurations for DDPM."""
     beta_range: list[float] | None
     beta_scheduler: BetaScheduler
@@ -99,7 +99,7 @@ class DDPMTrainingConfigs(Configs):
     @staticmethod
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
-        parser = Configs.get_arguments(parser)
+        parser = TrainingConfigs.get_arguments(parser)
 
         # diffusion arguments
         diffusion_args = parser.add_argument_group("DDPM Arguments")
@@ -112,7 +112,7 @@ class DDPMTrainingConfigs(Configs):
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
 
 
-class SDETrainingConfigs(Configs):
+class SDETrainingConfigs(TrainingConfigs):
     """Training Configurations for SDE."""
     sde_type: SDEType
 
@@ -123,7 +123,7 @@ class SDETrainingConfigs(Configs):
     @staticmethod
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
-        parser = Configs.get_arguments(parser)
+        parser = TrainingConfigs.get_arguments(parser)
 
         # diffusion arguments
         diffusion_args = parser.add_argument_group("SDE Arguments")
@@ -133,3 +133,7 @@ class SDETrainingConfigs(Configs):
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"SDE settings: sde_type={self.sde_type.name}")
+
+
+Configs = TrainingConfigs
+__all__ = ["TrainingConfigs", "DDPMTrainingConfigs", "SDETrainingConfigs"]
