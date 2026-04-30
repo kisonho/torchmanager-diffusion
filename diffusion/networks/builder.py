@@ -39,7 +39,7 @@ def build_conditional_unet(in_channels: int, out_channels: int, /, *, attention_
     - Returns: A `ConditionalUNet` which has both its input and output channel of the given `in_channels` and `out_channels`
     """
     return ConditionalUNet(
-        in_channels,
+        in_channels + out_channels,
         128,
         out_channels,
         2,
