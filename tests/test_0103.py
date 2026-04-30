@@ -1,4 +1,5 @@
 import torch, unittest
+from typing import cast
 
 
 class _EchoTimedModule(torch.nn.Module):
@@ -28,13 +29,11 @@ class Case0103(unittest.TestCase):
     def test_module(self):
         from diffusion.data.diffusion import DiffusionData
         from diffusion.networks import build
-        from diffusion.nn import BBDMModule
-        from diffusion.scheduling import linear_schedule
+        from diffusion_bridges import BBDMModule
 
         # build model
         unet = build(3, 3, dim_mults=(1, 2, 4, 8))
         T = 1000
-        linear_beta_space = linear_schedule(T)
         model = BBDMModule(unet, T)
 
         # initialize testing data
@@ -105,7 +104,7 @@ class Case0103(unittest.TestCase):
         t = torch.tensor([0.4, 0.8])
 
         torch.manual_seed(1234)
-        sampled = module.sampling_step(DiffusionData(x, t), i=1)
+        sampled = cast(torch.Tensor, module.sampling_step(DiffusionData(x, t), 1))
 
         torch.manual_seed(1234)
         f, G = module.sde.discretize(x, t)

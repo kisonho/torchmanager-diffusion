@@ -92,8 +92,8 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
 
     def _gather_sigma(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         # Map discrete training/sampling steps onto the continuous DDBM sigma schedule.
-        indices = (self.time_steps - t.long()).clamp(min=0, max=self.time_steps)
-        gathered = self.sigma_schedule.index_select(0, indices)
+        indices = (self.time_steps - t.to(self.sigma_schedule.device).long()).clamp(min=0, max=self.time_steps)
+        gathered = self.sigma_schedule.index_select(0, indices).to(x.device)
         return self._expand(gathered, x)
 
     def _get_bridge_scalings(self, sigma: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -180,7 +180,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
-        x_end = self.encode(condition)
+        x_end = self.encode(condition.to(x_start.device)).to(x_start.device)
         assert x_start.shape == x_end.shape, f"X_start and condition must have the same shape, got x_start={x_start.shape} and condition={x_end.shape}."
         if t is None:
             t = torch.randint(1, self.time_steps + 1, (x_start.shape[0],), device=x_start.device).long()
