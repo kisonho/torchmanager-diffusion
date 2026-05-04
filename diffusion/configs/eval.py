@@ -15,6 +15,7 @@ class EvalConfigs(_Configs):
     show_verbose: bool
     time_steps: int | None
     use_multi_gpus: bool
+    use_ode: bool
 
     def format_arguments(self) -> None:
         # format arguments
@@ -53,6 +54,7 @@ class EvalConfigs(_Configs):
         testing_args.add_argument("--fast_sampling", action="store_true", default=False, help="A flag to use fast sampling.")
         testing_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
         testing_args.add_argument("-t", "--time_steps", type=int, default=None, help="The total time steps of diffusion model, default is `None` (Checkpoint is needed).")
+        testing_args.add_argument("--use_ode", action="store_true", default=False, help="A flag to use ODE sampling.")
         testing_args = _Configs.get_arguments(testing_args)
 
         # device arguments
@@ -69,7 +71,7 @@ class EvalConfigs(_Configs):
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Pre-trained model: {self.model}")
         view.logger.info(f"Testing settings: batch_size={self.batch_size}, show_verbose={self.show_verbose}")
-        view.logger.info(f"Diffusion model settings: fast_sampling={self.fast_sampling}, time_steps={self.time_steps}")
+        view.logger.info(f"Diffusion model settings: fast_sampling={self.fast_sampling}, time_steps={self.time_steps}, use_ode={self.use_ode}")
         view.logger.info(f"Device settings: device={self.device}, use_multi_gpus={self.use_multi_gpus}")
 
 
@@ -101,7 +103,7 @@ class DDPMEvalConfigs(EvalConfigs):
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Model: {self.model}")
         view.logger.info(f"Testing settings: batch_size={self.batch_size}, show_verbose={self.show_verbose}")
-        view.logger.info(f"Diffusion model settings: beta_scheduler={self.beta_scheduler}, time_steps={self.time_steps}")
+        view.logger.info(f"Diffusion model settings: beta_scheduler={self.beta_scheduler}, time_steps={self.time_steps}, use_ode={self.use_ode}")
         view.logger.info(f"Device settings: device={self.device}, use_multi_gpus={self.use_multi_gpus}")
 
 

@@ -3,6 +3,8 @@ from enum import Enum
 from typing import Any, Generic, TypeVar, overload
 
 from .diffusion import DiffusionModule
+from .ddpm import DDPMModule
+from .protocols import BetaSpace
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=torch.nn.Module | None)
@@ -40,8 +42,6 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
 
     def __init__(self, model: Module, time_steps: int, /, *, encoder: E = None, decoder: D = None) -> None:
         super().__init__(model, time_steps)
-        self.fast_sampling_steps = None
-
         # initialize encoder
         self.encoder = encoder
         if self.encoder is not None:
@@ -84,4 +84,14 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         elif mode == LatentMode.FORWARD:
             return super().__call__(*args, **kwargs)
 
-__all__ = ["LatentMode", "LatentDiffusionModule"]
+
+class LDM(LatentDiffusionModule[Module, E, D], DDPMModule[Module]):
+    """
+    Latent DDPM module.
+    """
+    def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, /, *, encoder: E = None, decoder: D = None, with_condition: bool = False) -> None:
+        LatentDiffusionModule.__init__(self, model, time_steps, encoder=encoder, decoder=decoder)
+        DDPMModule.__init__(self, model, beta_space, time_steps, with_condition=with_condition)
+
+
+__all__ = ["LatentMode", "LatentDiffusionModule", "LDM"]

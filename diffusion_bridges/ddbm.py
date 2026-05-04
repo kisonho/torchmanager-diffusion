@@ -1,6 +1,7 @@
 import torch
 from diffusion.data import DiffusionData
 from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
+from diffusion.sde import SDEType
 from typing import TypeVar
 
 Module = TypeVar('Module', bound=torch.nn.Module)
@@ -26,10 +27,10 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     cov_xy: float
     guidance: float
     churn_step_ratio: float
-    pred_mode: str
+    pred_mode: SDEType | None
     sigma_schedule: torch.Tensor
 
-    def __init__(self, diff_model: Module, time_steps: int, *, sigma_data: float = 0.5, sigma_min: float = 0.002, sigma_max: float = 1.0, rho: float = 7.0, beta_d: float = 2.0, beta_min: float = 0.1, cov_xy: float = 0.0, guidance: float = 1.0, churn_step_ratio: float = 0.0, pred_mode: str = "vp", encoder: E = None, decoder: D = None) -> None:
+    def __init__(self, diff_model: Module, time_steps: int, *, sigma_data: float = 0.5, sigma_min: float = 0.002, sigma_max: float = 1.0, rho: float = 7.0, beta_d: float = 2.0, beta_min: float = 0.1, cov_xy: float = 0.0, guidance: float = 1.0, churn_step_ratio: float = 0.0, pred_mode: SDEType | None = SDEType.VP, encoder: E = None, decoder: D = None) -> None:
         """
         Initialize the DDBM module.
 
@@ -45,7 +46,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             - cov_xy: The covariance term between source and target endpoints in `float`.
             - guidance: The bridge guidance coefficient in `float`.
             - churn_step_ratio: The stochastic churn ratio in `float`.
-            - pred_mode: The bridge schedule mode in `str`.
+            - pred_mode: The bridge schedule mode in `diffusion.sde.SDEType`.
             - encoder: The encoder model in `torch.nn.Module`.
             - decoder: The decoder model in `torch.nn.Module`.
         """
@@ -100,40 +101,43 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         sigma_data_end = self.sigma_data
         c = 1.0
 
-        if self.pred_mode == "ve":
-            sigma_sq = sigma.pow(2)
-            sigma_max_sq = self.sigma_max**2
-            a = sigma_sq.pow(2) / (sigma_max_sq**2) * sigma_data_end**2
-            b = (1 - sigma_sq / sigma_max_sq).pow(2) * self.sigma_data**2
-            cross = 2 * sigma_sq / sigma_max_sq * (1 - sigma_sq / sigma_max_sq) * self.cov_xy
-            bridge = c**2 * sigma_sq * (1 - sigma_sq / sigma_max_sq)
-            total = a + b + cross + bridge
-            c_in = total.rsqrt()
-            c_skip = ((1 - sigma_sq / sigma_max_sq) * self.sigma_data**2 + sigma_sq / sigma_max_sq * self.cov_xy) / total
-            c_out = torch.sqrt((sigma_sq / sigma_max_sq).pow(2) * (sigma_data_end**2 * self.sigma_data**2 - self.cov_xy**2) + self.sigma_data**2 * c**2 * sigma_sq * (1 - sigma_sq / sigma_max_sq)) * c_in
-            return c_skip, c_out, c_in
-        elif self.pred_mode == "vp":
-            logsnr_t = self._vp_logsnr(sigma, self.beta_d, self.beta_min)
-            logsnr_t_max = self._vp_logsnr(torch.ones_like(sigma), self.beta_d, self.beta_min)
-            logs_t = self._vp_logs(sigma, self.beta_d, self.beta_min)
-            logs_t_max = self._vp_logs(torch.ones_like(sigma), self.beta_d, self.beta_min)
+        match self.pred_mode:
+            case SDEType.VE:
+                sigma_sq = sigma.pow(2)
+                sigma_max_sq = self.sigma_max**2
+                a = sigma_sq.pow(2) / (sigma_max_sq**2) * sigma_data_end**2
+                b = (1 - sigma_sq / sigma_max_sq).pow(2) * self.sigma_data**2
+                cross = 2 * sigma_sq / sigma_max_sq * (1 - sigma_sq / sigma_max_sq) * self.cov_xy
+                bridge = c**2 * sigma_sq * (1 - sigma_sq / sigma_max_sq)
+                total = a + b + cross + bridge
+                c_in = total.rsqrt()
+                c_skip = ((1 - sigma_sq / sigma_max_sq) * self.sigma_data**2 + sigma_sq / sigma_max_sq * self.cov_xy) / total
+                c_out = torch.sqrt((sigma_sq / sigma_max_sq).pow(2) * (sigma_data_end**2 * self.sigma_data**2 - self.cov_xy**2) + self.sigma_data**2 * c**2 * sigma_sq * (1 - sigma_sq / sigma_max_sq)) * c_in
+                return c_skip, c_out, c_in
+            case SDEType.VP:
+                logsnr_t = self._vp_logsnr(sigma, self.beta_d, self.beta_min)
+                logsnr_t_max = self._vp_logsnr(torch.ones_like(sigma), self.beta_d, self.beta_min)
+                logs_t = self._vp_logs(sigma, self.beta_d, self.beta_min)
+                logs_t_max = self._vp_logs(torch.ones_like(sigma), self.beta_d, self.beta_min)
 
-            a_t = torch.exp(logsnr_t_max - logsnr_t + logs_t - logs_t_max)
-            b_t = -torch.expm1(logsnr_t_max - logsnr_t) * torch.exp(logs_t)
-            c_t = -torch.expm1(logsnr_t_max - logsnr_t) * torch.exp(2 * logs_t - logsnr_t)
-            total = a_t.pow(2) * sigma_data_end**2 + b_t.pow(2) * self.sigma_data**2 + 2 * a_t * b_t * self.cov_xy + c**2 * c_t
-            c_in = total.rsqrt()
-            c_skip = (b_t * self.sigma_data**2 + a_t * self.cov_xy) / total
-            c_out = torch.sqrt(a_t.pow(2) * (sigma_data_end**2 * self.sigma_data**2 - self.cov_xy**2) + self.sigma_data**2 * c**2 * c_t) * c_in
-            return c_skip, c_out, c_in
-        elif self.pred_mode in ("ve_simple", "vp_simple"):
-            ones = torch.ones_like(sigma)
-            zeros = torch.zeros_like(sigma)
-            return zeros, ones, ones
+                a_t = torch.exp(logsnr_t_max - logsnr_t + logs_t - logs_t_max)
+                b_t = -torch.expm1(logsnr_t_max - logsnr_t) * torch.exp(logs_t)
+                c_t = -torch.expm1(logsnr_t_max - logsnr_t) * torch.exp(2 * logs_t - logsnr_t)
+                total = a_t.pow(2) * sigma_data_end**2 + b_t.pow(2) * self.sigma_data**2 + 2 * a_t * b_t * self.cov_xy + c**2 * c_t
+                c_in = total.rsqrt()
+                c_skip = (b_t * self.sigma_data**2 + a_t * self.cov_xy) / total
+                c_out = torch.sqrt(a_t.pow(2) * (sigma_data_end**2 * self.sigma_data**2 - self.cov_xy**2) + self.sigma_data**2 * c**2 * c_t) * c_in
+                return c_skip, c_out, c_in
+            case _:
+                ones = torch.ones_like(sigma)
+                zeros = torch.zeros_like(sigma)
+                return zeros, ones, ones
         raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
     def _run_model(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None) -> torch.Tensor:
         # DDBM conditions the backbone on log-sigma rather than raw integer steps.
+        condition = condition.to(x.device) if condition is not None else None
+        sigma = sigma.to(device=x.device, dtype=x.dtype)
         rescaled_t = 250 * torch.log(sigma.reshape(x.shape[0]) + 1e-44)
         x_in = self._get_bridge_scalings(sigma)[2] * x
         data = DiffusionData(x_in, rescaled_t, condition=condition)
@@ -154,14 +158,14 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         return denoised
 
     def _bridge_sample(self, x_start: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor, noise: torch.Tensor) -> torch.Tensor:
-        if self.pred_mode.startswith("ve"):
+        if self.pred_mode is SDEType.VE:
             # VE mode uses the closed-form bridge between paired endpoints.
             sigma_sq = sigma.pow(2)
             sigma_max_sq = self.sigma_max**2
             std_t = sigma * torch.sqrt(torch.clamp(1 - sigma_sq / sigma_max_sq, min=0))
             mu_t = sigma_sq / sigma_max_sq * x_end + (1 - sigma_sq / sigma_max_sq) * x_start
             return mu_t + std_t * noise
-        elif self.pred_mode.startswith("vp"):
+        elif self.pred_mode is SDEType.VP:
             # VP mode follows the time-dependent coefficients from the reference DDBM implementation.
             sigma_flat = sigma.reshape(x_start.shape[0])
             logsnr_t = self._vp_logsnr(sigma_flat, self.beta_d, self.beta_min)
@@ -236,13 +240,19 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         return f - gt2 * (0.5 * grad_logq - self.guidance * grad_logpxTlxt)
 
     def _derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
-        if self.pred_mode.startswith("ve"):
-            return self._ve_derivative(x, denoised, x_end, sigma)
-        elif self.pred_mode.startswith("vp"):
-            return self._vp_derivative(x, denoised, x_end, sigma)
-        raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
+        match self.pred_mode:
+            case SDEType.VE:
+                return self._ve_derivative(x, denoised, x_end, sigma)
+            case SDEType.VP:
+                return self._vp_derivative(x, denoised, x_end, sigma)
+            case _:
+                raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
     def _step(self, x: torch.Tensor, sigma: torch.Tensor, sigma_next: torch.Tensor, x_end: torch.Tensor, predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        x_end = x_end.to(device=x.device, dtype=x.dtype)
+        sigma = sigma.to(device=x.device, dtype=x.dtype)
+        sigma_next = sigma_next.to(device=x.device, dtype=x.dtype)
+        predicted_obj = predicted_obj.to(device=x.device, dtype=x.dtype) if predicted_obj is not None else None
         sigma_hat = sigma
         x_curr = x
         if predicted_obj is None:
@@ -277,27 +287,33 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             tau = self.fast_sampling_steps[i]
             tau_minus_one = self.fast_sampling_steps[i + 1] if i < len(self.fast_sampling_steps) - 1 else 0
             t = torch.full((data.x.shape[0],), tau, device=data.x.device, dtype=torch.long)
-            data = DiffusionData(data.x, t, condition=data.condition)
+            condition = data.condition.to(data.x.device) if isinstance(data.condition, torch.Tensor) else data.condition
+            data = DiffusionData(data.x, t, condition=condition)
             return self.fast_sampling_step(data, tau, tau_minus_one, return_noise=return_noise, predicted_obj=predicted_obj)
 
         assert data.condition is not None, "Condition must be given for DDBM."
-        x = data.condition if torch.all(data.t == self.time_steps) else data.x
-        sigma = self._gather_sigma(data.t, x)
-        prev_t = torch.clamp(data.t.long() - 1, min=0)
+        condition = data.condition.to(data.x.device) if isinstance(data.condition, torch.Tensor) else data.condition
+        assert isinstance(condition, torch.Tensor), "Condition must be given as a tensor for DDBM."
+        x = condition if torch.all(data.t == self.time_steps) else data.x
+        t = data.t.to(x.device)
+        sigma = self._gather_sigma(t, x)
+        prev_t = torch.clamp(t.long() - 1, min=0)
         sigma_next = self._gather_sigma(prev_t, x)
-        predicted_obj = self.forward(DiffusionData(x, data.t, condition=data.condition)) if predicted_obj is None else predicted_obj
-        x_t_minus_one, denoised = self._step(x, sigma, sigma_next, data.condition, predicted_obj=predicted_obj)
+        predicted_obj = self.forward(DiffusionData(x, t, condition=condition)) if predicted_obj is None else predicted_obj.to(x.device)
+        x_t_minus_one, denoised = self._step(x, sigma, sigma_next, condition, predicted_obj=predicted_obj)
         return (x_t_minus_one, denoised) if return_noise else x_t_minus_one
 
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         assert data.condition is not None, "Condition must be given for DDBM."
-        x = data.condition if tau == self.time_steps else data.x
+        condition = data.condition.to(data.x.device) if isinstance(data.condition, torch.Tensor) else data.condition
+        assert isinstance(condition, torch.Tensor), "Condition must be given as a tensor for DDBM."
+        x = condition if tau == self.time_steps else data.x
         t = torch.full((x.shape[0],), tau, device=x.device, dtype=torch.long)
         next_t = torch.full((x.shape[0],), tau_minus_one, device=x.device, dtype=torch.long)
         sigma = self._gather_sigma(t, x)
         sigma_next = self._gather_sigma(next_t, x)
-        predicted_obj = self.forward(DiffusionData(x, t, condition=data.condition)) if predicted_obj is None else predicted_obj
-        x_tau_minus_one, denoised = self._step(x, sigma, sigma_next, data.condition, predicted_obj=predicted_obj)
+        predicted_obj = self.forward(DiffusionData(x, t, condition=condition)) if predicted_obj is None else predicted_obj.to(x.device)
+        x_tau_minus_one, denoised = self._step(x, sigma, sigma_next, condition, predicted_obj=predicted_obj)
         return (x_tau_minus_one, denoised) if return_noise else x_tau_minus_one
 
 

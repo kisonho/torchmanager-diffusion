@@ -169,4 +169,5 @@ class EMAOptimizer(Optimizer, Generic[O]):
         """
         self.base_optimizer.zero_grad()
 
+
 __all__ = ["EMAState", "EMAOptimizer"]

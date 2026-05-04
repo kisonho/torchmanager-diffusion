@@ -1,13 +1,13 @@
 import torch
 from typing import TypeVar
 
-from .diffusion import DiffusionModule
 from .protocols import BetaSpace, DiffusionData
+from .ode import ODESamplingDiffusionModule
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 
 
-class DDPMModule(DiffusionModule[Module]):
+class DDPMModule(ODESamplingDiffusionModule[Module]):
     """
     The main DDPM model
 
@@ -16,6 +16,7 @@ class DDPMModule(DiffusionModule[Module]):
 
     - Properties:
         - beta_space: A scheduled `BetaSpace`
+        - with_condition: A `bool` flag to indicate whether the model is conditional or not
     """
     beta_space: BetaSpace
     with_condition: bool
@@ -35,7 +36,20 @@ class DDPMModule(DiffusionModule[Module]):
         xt = DiffusionData(x, t, condition=condition) if self.with_condition else DiffusionData(x, t)
         return xt, noise
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        sqrt_alphas_cumprod_t = self.beta_space.sample_sqrt_alphas_cumprod(data.t, data.x.shape)
+        sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(data.t, data.x.shape)
+
+        predicted_noise = self(data) if predicted_obj is None else predicted_obj
+        assert isinstance(predicted_noise, torch.Tensor), "The model must return a `torch.Tensor` as predicted noise."
+
+        x_start = (data.x - sqrt_one_minus_alphas_cumprod_t * predicted_noise) / sqrt_alphas_cumprod_t
+        batch_size = data.t.shape[0]
+        alphas_cumprod_prev_t = self.beta_space.alphas_cumprod_prev.gather(-1, data.t - 1).reshape(batch_size, *((1,) * (len(data.x.shape) - 1)))
+        y = alphas_cumprod_prev_t.sqrt() * x_start + (1 - alphas_cumprod_prev_t).sqrt() * predicted_noise
+        return (y, predicted_noise) if return_noise else y
+
+    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model
 
