@@ -5,6 +5,8 @@ from .diffusion import TimedModule, DDPMModule, DiffusionModule, FastSamplingDif
 from .embeddings import SinusoidalPositionEmbeddings
 from .norm import PreNorm
 
+DDPM = DDPMModule
+
 __all__ = [
     "diffusion",
     "Attention",
@@ -24,5 +26,3 @@ __all__ = [
     "SinusoidalPositionEmbeddings",
     "PreNorm",
 ]
-
-DDPM = DDPMModule
