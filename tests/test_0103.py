@@ -15,6 +15,11 @@ class _EchoTimedModule(torch.nn.Module):
         return torch.full_like(x, self.value)
 
 
+class _LargeConditionalModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor, t: torch.Tensor, condition: torch.Tensor | None = None) -> torch.Tensor:
+        return torch.full_like(x, 100.0)
+
+
 class Case0103(unittest.TestCase):
     def test_import(self):
         import diffusion
@@ -110,3 +115,86 @@ class Case0103(unittest.TestCase):
         f, G = module.sde.discretize(x, t)
         expected = x - f + G[:, None, None, None] * torch.randn_like(x)
         self.assertTrue(torch.allclose(sampled, expected))
+
+    def test_ddbm_vp_derivative_matches_reference_endpoint_guidance(self) -> None:
+        from diffusion.sde import SDEType
+        from diffusion_bridges import DDBMModule
+
+        module = DDBMModule(_EchoTimedModule(), 10, pred_mode=SDEType.VP)
+        x = torch.tensor([[[[0.2, -0.4]]], [[[0.7, -0.1]]]])
+        denoised = torch.tensor([[[[-0.3, 0.5]]], [[[0.1, -0.6]]]])
+        x_end = torch.tensor([[[[0.4, -0.2]]], [[[-0.5, 0.8]]]])
+        sigma = torch.tensor([0.25, 0.75])[:, None, None, None]
+
+        actual = module._vp_derivative(x, denoised, x_end, sigma)
+
+        sigma_flat = sigma.reshape(x.shape[0])
+        sigma_t = module._vp_snr_sqrt_reciprocal(sigma_flat)
+        sigma_t_deriv = module._vp_snr_sqrt_reciprocal_deriv(sigma_flat)
+        s_t = (1 + sigma_t.pow(2)).rsqrt()
+        s_t_deriv = -sigma_t * sigma_t_deriv * s_t.pow(3)
+        std_t = sigma_t * s_t
+        logs_t = module._vp_logs(sigma_flat, module.beta_d, module.beta_min)
+        logs_T = module._vp_logs(torch.ones_like(sigma_flat), module.beta_d, module.beta_min)
+        logsnr_t = -2 * torch.log(sigma_t)
+        logsnr_T = module._vp_logsnr(torch.ones_like(sigma_flat), module.beta_d, module.beta_min)
+
+        def expand(values: torch.Tensor) -> torch.Tensor:
+            return values[:, None, None, None]
+
+        a_t = torch.exp(logsnr_T - logsnr_t + logs_t - logs_T)
+        b_t = -torch.expm1(logsnr_T - logsnr_t) * torch.exp(logs_t)
+        mu_t = expand(a_t) * x_end + expand(b_t) * denoised
+        std_t_sq = expand(std_t).pow(2)
+        grad_logq = -(x - mu_t) / std_t_sq / expand(-torch.expm1(logsnr_T - logsnr_t))
+        grad_logpxTlxt = -(x - expand(torch.exp(logs_t - logs_T)) * x_end) / std_t_sq / expand(torch.expm1(logsnr_t - logsnr_T))
+        f = expand(s_t_deriv * torch.exp(-logs_t)) * x
+        gt2 = expand(2 * torch.exp(2 * logs_t) * sigma_t * sigma_t_deriv)
+        expected = f - gt2 * (0.5 * grad_logq - module.guidance * grad_logpxTlxt)
+
+        self.assertTrue(torch.allclose(actual, expected, atol=1e-6, rtol=1e-5))
+
+    def test_ddbm_sampling_schedule_matches_reference_endpoint(self) -> None:
+        from diffusion.sde import SDEType
+        from diffusion_bridges import DDBMModule
+
+        module = DDBMModule(_EchoTimedModule(), 40, sigma_min=0.0001, sigma_max=1.0, pred_mode=SDEType.VP)
+        x = torch.zeros((2, 1, 1, 1))
+        t = torch.full((2,), module.time_steps, dtype=torch.long)
+
+        train_sigma = module._gather_sigma(t, x)
+        sample_sigma = module._gather_sampling_sigma(t, x)
+
+        self.assertTrue(torch.allclose(train_sigma, torch.ones_like(train_sigma)))
+        self.assertTrue(torch.allclose(sample_sigma, torch.full_like(sample_sigma, 0.9999)))
+
+    def test_ddbm_sampling_schedule_is_backward_compatible_with_pickled_modules(self) -> None:
+        from diffusion.sde import SDEType
+        from diffusion_bridges import DDBMModule
+
+        module = DDBMModule(_EchoTimedModule(), 40, sigma_min=0.0001, sigma_max=1.0, pred_mode=SDEType.VP)
+        del module._buffers["sampling_sigma_schedule"]
+        x = torch.zeros((2, 1, 1, 1))
+        t = torch.full((2,), module.time_steps, dtype=torch.long)
+
+        sample_sigma = module._gather_sampling_sigma(t, x)
+
+        self.assertIn("sampling_sigma_schedule", module._buffers)
+        self.assertTrue(torch.allclose(sample_sigma, torch.full_like(sample_sigma, 0.9999)))
+        self.assertNotIn("sampling_sigma_schedule", module.state_dict())
+
+    def test_ddbm_sampling_clips_denoised_and_final_sample(self) -> None:
+        from diffusion.sde import SDEType
+        from diffusion_bridges import DDBMModule
+
+        module = DDBMModule(_LargeConditionalModule(), 4, sigma_min=0.0001, sigma_max=1.0, pred_mode=SDEType.VP)
+        x = torch.zeros((2, 1, 2, 2))
+        condition = torch.zeros_like(x)
+        t = torch.ones((x.shape[0],), dtype=torch.long)
+
+        sampled, denoised = module.sampling_step(DiffusionData(x, t, condition=condition), 4, return_noise=True)
+
+        self.assertLessEqual(float(denoised.max()), 1.0)
+        self.assertGreaterEqual(float(denoised.min()), -1.0)
+        self.assertLessEqual(float(sampled.max()), 1.0)
+        self.assertGreaterEqual(float(sampled.min()), -1.0)

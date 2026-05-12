@@ -29,6 +29,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     churn_step_ratio: float
     pred_mode: SDEType | None
     sigma_schedule: torch.Tensor
+    sampling_sigma_schedule: torch.Tensor
 
     def __init__(self, diff_model: Module, time_steps: int, *, sigma_data: float = 0.5, sigma_min: float = 0.002, sigma_max: float = 1.0, rho: float = 7.0, beta_d: float = 2.0, beta_min: float = 0.1, cov_xy: float = 0.0, guidance: float = 1.0, churn_step_ratio: float = 0.0, pred_mode: SDEType | None = SDEType.VP, encoder: E = None, decoder: D = None) -> None:
         """
@@ -64,6 +65,9 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
 
         sigma_schedule = self._build_sigma_schedule(time_steps, sigma_min, sigma_max, rho)
         self.register_buffer("sigma_schedule", sigma_schedule)
+        sampling_sigma_max = max(sigma_min, sigma_max - 1e-4)
+        sampling_sigma_schedule = self._build_sigma_schedule(time_steps, sigma_min, sampling_sigma_max, rho)
+        self.register_buffer("sampling_sigma_schedule", sampling_sigma_schedule, persistent=False)
 
     @staticmethod
     def _expand(values: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
@@ -91,11 +95,26 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     def _vp_logs(t: torch.Tensor, beta_d: float, beta_min: float) -> torch.Tensor:
         return -0.25 * beta_d * t.pow(2) - 0.5 * beta_min * t
 
-    def _gather_sigma(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-        # Map discrete training/sampling steps onto the continuous DDBM sigma schedule.
-        indices = (self.time_steps - t.to(self.sigma_schedule.device).long()).clamp(min=0, max=self.time_steps)
-        gathered = self.sigma_schedule.index_select(0, indices).to(x.device)
+    def _gather_from_schedule(self, t: torch.Tensor, x: torch.Tensor, schedule: torch.Tensor) -> torch.Tensor:
+        indices = (self.time_steps - t.to(schedule.device).long()).clamp(min=0, max=self.time_steps)
+        gathered = schedule.index_select(0, indices).to(x.device)
         return self._expand(gathered, x)
+
+    def _gather_sigma(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        # Map discrete training steps onto the continuous DDBM sigma schedule.
+        return self._gather_from_schedule(t, x, self.sigma_schedule)
+
+    def _ensure_sampling_sigma_schedule(self) -> torch.Tensor:
+        if not hasattr(self, "sampling_sigma_schedule"):
+            sampling_sigma_max = max(self.sigma_min, self.sigma_max - 1e-4)
+            sampling_sigma_schedule = self._build_sigma_schedule(self.time_steps, self.sigma_min, sampling_sigma_max, self.rho)
+            sampling_sigma_schedule = sampling_sigma_schedule.to(device=self.sigma_schedule.device, dtype=self.sigma_schedule.dtype)
+            self.register_buffer("sampling_sigma_schedule", sampling_sigma_schedule, persistent=False)
+        return self.sampling_sigma_schedule
+
+    def _gather_sampling_sigma(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        # The official sampler starts from sigma_max - 1e-4 rather than exactly sigma_max.
+        return self._gather_from_schedule(t, x, self._ensure_sampling_sigma_schedule())
 
     def _get_bridge_scalings(self, sigma: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         sigma_data_end = self.sigma_data
@@ -145,11 +164,13 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             return self.model(*data)
         return self.model(data.x, data.t)
 
-    def _denoise(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    def _denoise(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None, *, clip_denoised: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
         # Convert the network output back into the clean-sample estimate with bridge scalings.
         c_skip, c_out, _ = self._get_bridge_scalings(sigma)
         model_output = self._run_model(x, sigma, condition=condition)
         denoised = c_out * model_output + c_skip * x
+        if clip_denoised:
+            denoised = denoised.clamp(-1, 1)
         return model_output, denoised
 
     def forward(self, data: DiffusionData) -> torch.Tensor:
@@ -197,11 +218,13 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         x_t = self._bridge_sample(x_start, x_end, sigma, noise)
         return DiffusionData(x_t, t, condition=x_end), x_start
 
-    def _ve_derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
+    def _ve_derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor, *, stochastic: bool = False) -> torch.Tensor:
         grad_pxtlx0 = (denoised - x) / torch.clamp(sigma.pow(2), min=1e-12)
+        gt2 = 2 * sigma
+        if stochastic:
+            return -gt2 * grad_pxtlx0
         denom = torch.clamp(self.sigma_max**2 - sigma.pow(2), min=1e-12)
         grad_pxTlxt = (x_end - x) / denom
-        gt2 = 2 * sigma
         return -0.5 * gt2 * (grad_pxtlx0 - self.guidance * grad_pxTlxt)
 
     def _vp_snr_sqrt_reciprocal(self, t: torch.Tensor) -> torch.Tensor:
@@ -211,7 +234,14 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         base = self._vp_snr_sqrt_reciprocal(t)
         return 0.5 * (self.beta_min + self.beta_d * t) * (base + 1 / torch.clamp(base, min=1e-12))
 
-    def _vp_derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
+    def _vp_diffusion_squared(self, sigma: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        sigma_flat = sigma.reshape(x.shape[0])
+        snr_recip = self._vp_snr_sqrt_reciprocal(sigma_flat)
+        snr_recip_deriv = self._vp_snr_sqrt_reciprocal_deriv(sigma_flat)
+        logs_t = self._vp_logs(sigma_flat, self.beta_d, self.beta_min)
+        return self._expand(2 * torch.exp(2 * logs_t) * snr_recip * snr_recip_deriv, x)
+
+    def _vp_derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor, *, stochastic: bool = False) -> torch.Tensor:
         sigma_flat = sigma.reshape(x.shape[0])
         snr_recip = self._vp_snr_sqrt_reciprocal(sigma_flat)
         snr_recip_deriv = self._vp_snr_sqrt_reciprocal_deriv(sigma_flat)
@@ -232,19 +262,29 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         denom_q = torch.clamp(-torch.expm1(logsnr_t_max - logsnr_t), min=1e-12)
         grad_logq = -(x - mu_t) / std_t_sq / self._expand(denom_q, x)
 
-        denom_end = torch.clamp(torch.expm1(logsnr_t - logsnr_t_max), max=-1e-12)
+        denom_end = torch.clamp(torch.expm1(logsnr_t - logsnr_t_max), min=1e-12)
         grad_logpxTlxt = -(x - self._expand(torch.exp(logs_t - logs_t_max), x) * x_end) / std_t_sq / self._expand(denom_end, x)
 
         f = self._expand(s_t_deriv * torch.exp(-logs_t), x) * x
         gt2 = self._expand(2 * torch.exp(2 * logs_t) * snr_recip * snr_recip_deriv, x)
-        return f - gt2 * (0.5 * grad_logq - self.guidance * grad_logpxTlxt)
+        q_coeff = 1.0 if stochastic else 0.5
+        return f - gt2 * (q_coeff * grad_logq - self.guidance * grad_logpxTlxt)
 
-    def _derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
+    def _derivative(self, x: torch.Tensor, denoised: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor, *, stochastic: bool = False) -> torch.Tensor:
         match self.pred_mode:
             case SDEType.VE:
-                return self._ve_derivative(x, denoised, x_end, sigma)
+                return self._ve_derivative(x, denoised, x_end, sigma, stochastic=stochastic)
             case SDEType.VP:
-                return self._vp_derivative(x, denoised, x_end, sigma)
+                return self._vp_derivative(x, denoised, x_end, sigma, stochastic=stochastic)
+            case _:
+                raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
+
+    def _diffusion_squared(self, sigma: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        match self.pred_mode:
+            case SDEType.VE:
+                return 2 * sigma
+            case SDEType.VP:
+                return self._vp_diffusion_squared(sigma, x)
             case _:
                 raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
@@ -256,27 +296,28 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         sigma_hat = sigma
         x_curr = x
         if predicted_obj is None:
-            _, denoised = self._denoise(x_curr, sigma, condition=x_end)
+            _, denoised = self._denoise(x_curr, sigma, condition=x_end, clip_denoised=True)
         else:
-            denoised = predicted_obj
+            denoised = predicted_obj.clamp(-1, 1)
 
         if self.churn_step_ratio > 0 and torch.any(sigma_next > 0):
             # Optional stochastic churn matches the reference sampler's noise injection before Heun correction.
             sigma_hat = (sigma_next - sigma) * self.churn_step_ratio + sigma
-            d_1 = self._derivative(x_curr, denoised, x_end, sigma)
+            d_1 = self._derivative(x_curr, denoised, x_end, sigma, stochastic=True)
             dt = sigma_hat - sigma
-            noise_scale = torch.sqrt(torch.clamp(dt.abs(), min=0)) * torch.sqrt(torch.clamp(2 * sigma, min=0))
+            gt2 = self._diffusion_squared(sigma, x_curr)
+            noise_scale = torch.sqrt(torch.clamp(dt.abs(), min=0)) * torch.sqrt(torch.clamp(gt2, min=0))
             x_curr = x_curr + d_1 * dt + torch.randn_like(x_curr) * noise_scale
-            _, denoised = self._denoise(x_curr, sigma_hat, condition=x_end)
+            _, denoised = self._denoise(x_curr, sigma_hat, condition=x_end, clip_denoised=True)
 
         d = self._derivative(x_curr, denoised, x_end, sigma_hat)
         dt = sigma_next - sigma_hat
         if torch.all(sigma_next == 0):
-            return x_curr + d * dt, denoised
+            return (x_curr + d * dt).clamp(-1, 1), denoised
 
         # Heun's method refines the Euler proposal with a second denoiser evaluation.
         x_euler = x_curr + d * dt
-        _, denoised_next = self._denoise(x_euler, sigma_next, condition=x_end)
+        _, denoised_next = self._denoise(x_euler, sigma_next, condition=x_end, clip_denoised=True)
         d_next = self._derivative(x_euler, denoised_next, x_end, sigma_next)
         x_next = x_curr + 0.5 * (d + d_next) * dt
         return x_next, denoised
@@ -296,11 +337,10 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         assert isinstance(condition, torch.Tensor), "Condition must be given as a tensor for DDBM."
         x = condition if torch.all(data.t == self.time_steps) else data.x
         t = data.t.to(x.device)
-        sigma = self._gather_sigma(t, x)
+        sigma = self._gather_sampling_sigma(t, x)
         prev_t = torch.clamp(t.long() - 1, min=0)
-        sigma_next = self._gather_sigma(prev_t, x)
-        predicted_obj = self.forward(DiffusionData(x, t, condition=condition)) if predicted_obj is None else predicted_obj.to(x.device)
-        x_t_minus_one, denoised = self._step(x, sigma, sigma_next, condition, predicted_obj=predicted_obj)
+        sigma_next = self._gather_sampling_sigma(prev_t, x)
+        x_t_minus_one, denoised = self._step(x, sigma, sigma_next, condition)
         return (x_t_minus_one, denoised) if return_noise else x_t_minus_one
 
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
@@ -310,10 +350,9 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         x = condition if tau == self.time_steps else data.x
         t = torch.full((x.shape[0],), tau, device=x.device, dtype=torch.long)
         next_t = torch.full((x.shape[0],), tau_minus_one, device=x.device, dtype=torch.long)
-        sigma = self._gather_sigma(t, x)
-        sigma_next = self._gather_sigma(next_t, x)
-        predicted_obj = self.forward(DiffusionData(x, t, condition=condition)) if predicted_obj is None else predicted_obj.to(x.device)
-        x_tau_minus_one, denoised = self._step(x, sigma, sigma_next, condition, predicted_obj=predicted_obj)
+        sigma = self._gather_sampling_sigma(t, x)
+        sigma_next = self._gather_sampling_sigma(next_t, x)
+        x_tau_minus_one, denoised = self._step(x, sigma, sigma_next, condition)
         return (x_tau_minus_one, denoised) if return_noise else x_tau_minus_one
 
 
