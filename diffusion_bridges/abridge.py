@@ -59,7 +59,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         objective = m_t * (condition - x_start) + B_t * noise
         return DiffusionData(xt, t), objective
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # check if fast sampling
         if self.fast_sampling_steps is not None:
             # get time steps
@@ -76,12 +76,12 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         assert data.condition is not None, "Condition must be given for A-Bridge."
 
         # m_t = t/T
-        t = data.t
+        t = i
         T = self.time_steps
         m_t = t / T
 
         # replace random noise into condition for the first sampling step
-        if t == T:
+        if i == T:
             x_t = data.condition
             data = DiffusionData(x_t, data.t, condition=data.condition)
 
@@ -91,7 +91,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
             assert predicted_obj is not None, "Predicted noise must be given."
 
         # initialize new noise
-        new_noise = torch.randn_like(data.x, device=data.x.device) if t > 2 else 0
+        new_noise = torch.randn_like(data.x, device=data.x.device) if i > 2 else 0
 
         # sampling equation
         assert data.condition is not None, "Condition must be given."
@@ -101,11 +101,11 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
             noise = torch.randn_like(data.x, device=data.x.device, dtype=data.x.dtype)
             x_t_minus_one = 0.9998552 * data.x + 0.0001447648 * (data.x - predicted_obj) - 0.0014142 * noise
         else:
-            beta_t = T - t + 1
+            beta_t = T - i + 1
             gamma_t = math.log(T / beta_t)
             C = 1 - 1 / beta_t + 1 / (beta_t * gamma_t)
             c_xt = 1 / C * (1 + 1 / (T * gamma_t))
-            c_yt = 1 / C * (1 / beta_t - (t - 1) / (T * beta_t * gamma_t))
+            c_yt = 1 / C * (1 / beta_t - (i - 1) / (T * beta_t * gamma_t))
             c_epst = 1 / C * (1 / (T * gamma_t))
             c_zt = self.c_lambda / C * (1 - m_t + 1 / T) ** 0.5 * (1 / T) ** 0.5
             x_t_minus_one = c_xt * data.x - c_yt * data.condition - c_epst * predicted_obj - c_zt * new_noise

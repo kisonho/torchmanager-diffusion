@@ -206,14 +206,13 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 if not use_multi_gpus:
                     x_test = devices.move_to_device(x_test, device)
                 y_test = devices.move_to_device(y_test, device)
-                assert isinstance(x_test, torch.Tensor), "The input must be a valid `torch.Tensor`."
                 assert isinstance(y_test, torch.Tensor), "The target must be a valid `torch.Tensor`."
 
                 # sampling
                 view.logger.info(f"Sampling images {b + 1}/{batched_len}...")
                 sampling_shape = y_test.shape[-3:] if sampling_shape is None else sampling_shape
                 noises = torch.randn_like(y_test, dtype=torch.float, device=y_test.device)
-                x = self.sampling(int(x_test.shape[0]), noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
+                x = self.sampling(int(y_test.shape[0]), noises, *args, condition=x_test, sampling_range=sampling_range, show_verbose=show_verbose, **kwargs)
                 x = torch.cat([img.unsqueeze(0) for img in x])
                 x = devices.move_to_device(x, y_test.device)
                 step_summary = self.eval(x, y_test)

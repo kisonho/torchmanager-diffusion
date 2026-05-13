@@ -27,19 +27,19 @@ def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Co
     return TimedUNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb) if use_timed_data else UNet(128, channels=in_channels, out_dim=out_channels, conv_type=conv_type, dim_mults=dim_mults, dropout=dropout, with_time_emb=with_time_emb)
 
 
-def build_conditional_unet(in_channels: int, out_channels: int, /, *, attention_resolutions: tuple[int, ...] = (32, 16, 8), channel_mult: tuple[int, ...] = (1, 2, 4, 8)) -> ConditionalUNet:
+def build_conditional_unet(out_channels: int, /, condition_channels: int = 0, *, attention_resolutions: tuple[int, ...] = (32, 16, 8), channel_mult: tuple[int, ...] = (1, 2, 4, 8)) -> ConditionalUNet:
     """
     Build the UNET with given input channels. This is the UNET same as the one implemented in OpenAI's paper.
 
     - Parameters:
-        - in_channels: An `int` of input image channels
         - out_channels: An `int` of output image channels
+        - conditional_channels: An `int` of condition image channels
         - attention_resolutions: A `tuple` of attention resolutions in `int`
         - channel_mult: A `tuple` of channel multiplies in `int`
     - Returns: A `ConditionalUNet` which has both its input and output channel of the given `in_channels` and `out_channels`
     """
     return ConditionalUNet(
-        in_channels + out_channels,
+        condition_channels + out_channels,
         128,
         out_channels,
         2,
