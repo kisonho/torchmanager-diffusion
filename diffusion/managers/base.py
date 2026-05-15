@@ -261,8 +261,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def train_step(self, x_train: Any, y_train: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion:
-            assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
-            x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+            x_train_noise, objective = self.forward_diffusion(y_train, condition=x_train)
         else:
             x_train_noise, objective = x_train, y_train
         return super().train_step(x_train_noise, objective)
@@ -270,8 +269,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
     def test_step(self, x_test: Any, y_test: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion:
-            assert isinstance(x_test, torch.Tensor) and isinstance(y_test, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
-            x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+            x_test_noise, objective = self.forward_diffusion(y_test, condition=x_test)
         else:
             x_test_noise, objective = x_test, y_test
         return super().test_step(x_test_noise, objective)
