@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from torchmanager import losses, metrics, Manager as _Manager
 from torchmanager.data import Dataset
 from torchmanager_core import abc, devices, errors, torch, view, _raise
+from torchmanager_core.protocols import DeviceMovable
 from torchmanager_core.typing import Any, Module, Sequence, overload
 
 from .protocols import DiffusionData
@@ -260,7 +261,9 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
     def train_step(self, x_train: Any, y_train: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
-        if forward_diffusion:
+        if forward_diffusion and isinstance(x_train, torch.Tensor) and isinstance(y_train, DeviceMovable):
+            x_train_noise, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+        elif forward_diffusion:
             x_train_noise, objective = self.forward_diffusion(y_train, condition=x_train)
         else:
             x_train_noise, objective = x_train, y_train
@@ -268,7 +271,9 @@ class DiffusionManager(_Manager[Module], abc.ABC):
 
     def test_step(self, x_test: Any, y_test: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
-        if forward_diffusion:
+        if forward_diffusion and isinstance(x_test, torch.Tensor) and isinstance(y_test, DeviceMovable):
+            x_test_noise, objective = self.forward_diffusion(y_test.to(x_test.device), condition=x_test)
+        elif forward_diffusion:
             x_test_noise, objective = self.forward_diffusion(y_test, condition=x_test)
         else:
             x_test_noise, objective = x_test, y_test
