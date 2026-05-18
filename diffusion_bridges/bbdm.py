@@ -17,21 +17,22 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         DiffusionData, torch.Tensor
     ]:
         # step1 create t
-        x_start = data
-        batch_size = x_start.shape[0]
+        x0 = data
+        batch_size = x0.shape[0]
         t = torch.randint(1, self.time_steps, (batch_size,), device=data.device).long() if t is None else t.long()
 
         # step2 create noise
-        noise = torch.randn_like(x_start, device=x_start.device)
+        noise = torch.randn_like(x0, device=x0.device)
         assert condition is not None, "Condition is required for forward diffusion."
+        xT = condition.to(x0.device)
 
         # calculate x_t
         m_t = t / self.time_steps
         m_t = m_t.unsqueeze(1).unsqueeze(2).unsqueeze(3)
         delta_t = 2 * (m_t - m_t**2)
-        xt = (1 - m_t) * x_start + m_t * condition + delta_t**0.5 * noise
-        objective = m_t * (condition - x_start) + delta_t**0.5 * noise
-        return DiffusionData(xt, t), objective
+        xt = (1 - m_t) * x0 + m_t * xT + delta_t**0.5 * noise
+        objective = m_t * (xT - x0) + delta_t**0.5 * noise
+        return DiffusionData(xt, t).to(condition.device), objective.to(data.device)
 
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # fast sampling
@@ -40,6 +41,12 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             i = len(self.fast_sampling_steps) - i
             tau, tau_minus_one = self.fast_sampling_steps[i], self.fast_sampling_steps[i - 1]
             return self.fast_sampling_step(data, tau, tau_minus_one, return_noise=return_noise, predicted_obj=predicted_obj)
+
+        if predicted_obj is None:
+            predicted_obj, _ = self.forward(data)
+
+        # move xt to device
+        data = data.to(predicted_obj.device)
 
         # m_t = t/T
         t = data.t
@@ -60,10 +67,6 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         c_xt = (delta_t_minus_one / delta_t) * (1 - m_t) / (1 - m_t_minus_one) + delta_t_by_t_minus_one / delta_t * (1 - m_t_minus_one)
         c_yt = m_t_minus_one - m_t * (1 - m_t) / (1 - m_t_minus_one) * (delta_t_minus_one / delta_t)
         c_epst = (1 - m_t_minus_one) * delta_t_by_t_minus_one / delta_t
-
-        if predicted_obj is None:
-            predicted_obj, _ = self.forward(data)
-            assert predicted_obj is not None, "Predicted noise must be given."
 
         # initialize new noise
         new_noise = torch.randn_like(data.x, device=data.x.device) if t > 1 else 0

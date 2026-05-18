@@ -40,24 +40,25 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         DiffusionData, torch.Tensor
     ]:
         # enter latent space
-        x_start = self.encode(data)
+        x0 = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
-        condition = self.encode(condition)
-        t = torch.randint(1, self.time_steps + 1, (x_start.shape[0],), device=data.device).long() if t is None else t.to(data.device)
-        assert x_start.shape == condition.shape, f"X_start and condition must have the same shape, got x_start={data.shape} and condition{condition.shape}."
+        xT = condition.to(data.device)
+        xT = self.encode(xT)
+        t = torch.randint(1, self.time_steps + 1, (x0.shape[0],), device=data.device).long() if t is None else t.to(data.device)
+        assert x0.shape == xT.shape, f"X_start and condition must have the same shape, got x_start={data.shape} and condition{xT.shape}."
 
         # step1 create t
         T = self.time_steps
-        t_reshaped = t.view([x_start.shape[0]] + [1 for _ in range(len(x_start.shape[1:]))])
+        t_reshaped = t.view([x0.shape[0]] + [1 for _ in range(len(x0.shape[1:]))])
         m_t = t_reshaped / self.time_steps
 
         # step2 create noise
-        noise = torch.randn_like(x_start, device=x_start.device)
+        noise = torch.randn_like(x0, device=x0.device)
         B_t = self.c_lambda * (1 - m_t) * (torch.log(1 / (1 - m_t))) ** 0.5
         B_t = torch.where(torch.eq(t_reshaped, T), torch.zeros_like(B_t), B_t)
-        xt = (1 - m_t) * x_start + m_t * condition + B_t * noise
-        objective = m_t * (condition - x_start) + B_t * noise
-        return DiffusionData(xt, t), objective
+        xt = (1 - m_t) * x0 + m_t * xT + B_t * noise
+        objective = m_t * (xT - x0) + B_t * noise
+        return DiffusionData(xt, t).to(data.device), objective.to(condition.device)
 
     def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # check if fast sampling
@@ -88,17 +89,19 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         # predict noise
         if predicted_obj is None:
             predicted_obj = self.forward(data)
-            assert predicted_obj is not None, "Predicted noise must be given."
+
+        # move xt to device
+        data = data.to(predicted_obj.device)
 
         # initialize new noise
-        new_noise = torch.randn_like(data.x, device=data.x.device) if i > 2 else 0
+        new_noise = torch.randn_like(data.x) if i > 2 else 0
 
         # sampling equation
         assert data.condition is not None, "Condition must be given."
         if i == 1:
             x_t_minus_one: torch.Tensor = data.x - predicted_obj
         elif i == self.time_steps:
-            noise = torch.randn_like(data.x, device=data.x.device, dtype=data.x.dtype)
+            noise = torch.randn_like(data.x)
             x_t_minus_one = 0.9998552 * data.x + 0.0001447648 * (data.x - predicted_obj) - 0.0014142 * noise
         else:
             beta_t = T - i + 1
@@ -123,8 +126,10 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
 
         # predict noise
         if predicted_obj is None:
-            predicted_obj, _ = self.forward(data)
-            assert predicted_obj is not None, "Predicted noise must be given."
+            predicted_obj = self.forward(data)
+
+        # move xt to device
+        data = data.to(predicted_obj.device)
 
         # unpack data
         assert data.condition is not None, "Condition must be given."

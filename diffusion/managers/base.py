@@ -205,7 +205,7 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 # move x_test, y_test to device
                 if not use_multi_gpus:
                     x_test = devices.move_to_device(x_test, device)
-                y_test = devices.move_to_device(y_test, device)
+                    y_test = devices.move_to_device(y_test, device)
                 assert isinstance(y_test, torch.Tensor), "The target must be a valid `torch.Tensor`."
 
                 # sampling
