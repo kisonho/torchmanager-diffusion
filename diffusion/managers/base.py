@@ -121,14 +121,14 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: torch.Tensor | None = None, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
+    def sampling(self, num_images: int, x_t: torch.Tensor, *args: Any, condition: Any = None, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         '''
         Samples a given number of images
 
         - Parameters:
             - num_images: An `int` of number of images to generate
             - x_t: A `torch.Tensor` of the image at T step
-            - condition: An optional `torch.Tensor` of the condition to generate images
+            - condition: `Any` type of the condition to generate images
             - sampling_range: An optional `Sequence[int]`, or `range` of the range of time steps to sample
             - start_index: An optional `int` of the start index of the time step
             - end_index: An `int` of the end index of the time step
