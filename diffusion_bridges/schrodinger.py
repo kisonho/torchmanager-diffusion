@@ -112,7 +112,7 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
         data = DiffusionData(data.x, data.t)
         return super().forward(data)
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
         condition = self.encode(condition)
@@ -130,7 +130,8 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
         # Sample x_t from q(x_t | x_0, x_1); OT-ODE keeps only the mean path.
         xt = mu_x0 * x_start + mu_x1 * condition
         if not self.ot_ode:
-            xt = xt + std_sb * torch.randn_like(x_start)
+            noise = torch.randn_like(x_start) if noise is None else noise
+            xt = xt + std_sb * noise
 
         # I2SB trains on the normalized residual that recovers x_0 from x_t.
         objective = (xt - x_start) / self._gather_schedule(self.std_fwd, t, x_start)

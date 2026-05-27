@@ -13,7 +13,7 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         data = DiffusionData(data.x, data.t)
         return super().forward(data)
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
     ]:
         # step1 create t
@@ -22,7 +22,7 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         t = torch.randint(1, self.time_steps, (batch_size,), device=data.device).long() if t is None else t.long()
 
         # step2 create noise
-        noise = torch.randn_like(x0, device=x0.device)
+        noise = torch.randn_like(x0, device=x0.device) if noise is None else noise
         assert condition is not None, "Condition is required for forward diffusion."
         xT = condition.to(x0.device)
 

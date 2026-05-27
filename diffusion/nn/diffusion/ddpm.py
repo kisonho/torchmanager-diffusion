@@ -26,10 +26,10 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
         self.beta_space = beta_space
         self.with_condition = with_condition
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # initialize noises
         x_start = data.to(self.beta_space.device)
-        noise = torch.randn_like(x_start, device=x_start.device)
+        noise = torch.randn_like(x_start, device=x_start.device) if noise is None else noise
         sqrt_alphas_cumprod_t = self.beta_space.sample_sqrt_alphas_cumprod(t, x_start.shape)
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(t, x_start.shape)
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise

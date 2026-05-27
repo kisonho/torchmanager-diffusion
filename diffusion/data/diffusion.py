@@ -1,16 +1,20 @@
 import torch
-from typing import Generic, NamedTuple, TypeVar, cast
+from typing import Any, Generic, Iterable, NamedTuple, TypeVar, cast
 
-C = TypeVar('C', bound=torch.Tensor | dict[str, torch.Tensor] | list[torch.Tensor])
+C = TypeVar('C')
 
 
 def _move_to_device(target: C, /, device: torch.device, *, recursive: bool = True) -> C:
     if isinstance(target, torch.Tensor):
         moved_target = target.to(device)
     elif isinstance(target, dict):  # if target is a dict
-        moved_target = {k: _move_to_device(t, device) if isinstance(t, torch.Tensor) or recursive else t for k, t in target.items()}
+        moved_target = cast(dict[str, Any], target)
+        moved_target = {k: _move_to_device(t, device) if recursive else t for k, t in moved_target.items()}
+    elif isinstance(target, Iterable):
+        moved_target = cast(Iterable[Any], target)
+        moved_target = [_move_to_device(t, device) if recursive else t for t in moved_target]
     else:
-        moved_target = [_move_to_device(t, device) if isinstance(t, torch.Tensor) or recursive else t for t in target]
+        moved_target = target
     return cast(C, moved_target)
 
 

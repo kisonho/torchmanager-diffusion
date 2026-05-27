@@ -202,7 +202,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             return a_t * x_end + b_t * x_start + std_t * noise
         raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
         x_end = self.encode(condition.to(x_start.device)).to(x_start.device)
@@ -214,7 +214,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
 
         # Training supervises the denoised x0 reconstruction from a bridged x_t sample.
         sigma = self._gather_sigma(t, x_start)
-        noise = torch.randn_like(x_start)
+        noise = torch.randn_like(x_start) if noise is None else noise
         x_t = self._bridge_sample(x_start, x_end, sigma, noise)
         return DiffusionData(x_t, t, condition=x_end), x_start
 

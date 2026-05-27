@@ -36,7 +36,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         data = DiffusionData(data.x, data.t)
         return super().forward(data)
 
-    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None) -> tuple[
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
     ]:
         # enter latent space
@@ -53,7 +53,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         m_t = t_reshaped / self.time_steps
 
         # step2 create noise
-        noise = torch.randn_like(x0, device=x0.device)
+        noise = torch.randn_like(x0, device=x0.device) if noise is None else noise
         B_t = self.c_lambda * (1 - m_t) * (torch.log(1 / (1 - m_t))) ** 0.5
         B_t = torch.where(torch.eq(t_reshaped, T), torch.zeros_like(B_t), B_t)
         xt = (1 - m_t) * x0 + m_t * xT + B_t * noise

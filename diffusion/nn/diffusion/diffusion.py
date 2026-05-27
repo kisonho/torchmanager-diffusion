@@ -87,7 +87,7 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
             return self.model(data.x, data.t)
 
     @abc.abstractmethod
-    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: torch.Tensor | None = None) -> tuple[Any, Any]:
+    def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[Any, Any]:
         """
         Forward pass of diffusion model, sample noises
 

@@ -101,7 +101,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
     def forward(self, data: DiffusionData) -> torch.Tensor:
         return self._score(data)
 
-    def forward_diffusion(self, data: torch.Tensor, condition: torch.Tensor | None = None, t: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
+    def forward_diffusion(self, data: torch.Tensor, condition: torch.Tensor | None = None, t: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # sampling t
         if t is not None:
             t = self._continuous_time(t.to(data.device))
@@ -117,17 +117,12 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             t = torch.rand((data.shape[0],), device=data.device) * (self.sde.T - self.epsilon) + self.epsilon
 
         # add noise
-        z = self.sde.prior_sampling(data.shape).to(data.device)
+        z = self.sde.prior_sampling(data.shape).to(data.device) if noise is None else noise
         mean, std = self.sde.marginal_prob(data, t)
         std = self._expand_like(std, data)
         x = mean + std * z
         score = -z / std
         return DiffusionData(x, t, condition=condition), score
-
-    def to(self, device: str | torch.device) -> 'SDEModule[Module, SDEType]':
-        if self.beta_space is not None:
-            self.beta_space = self.beta_space.to(torch.device(device))
-        return super().to(device)
 
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # predict
