@@ -77,14 +77,14 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    def forward(self, data: DiffusionData, /) -> torch.Tensor:
+    def forward(self, data: DiffusionData, /, *args, **kwargs) -> torch.Tensor:
         # check model type
         if isinstance(self.model, TimedModule):  # wrapped `TimedModule` model
-            return self.model(data)
+            return self.model(data, *args, **kwargs)
         elif data.condition is not None:  # `condition` is given for non wrapped model
-            return self.model(*data)
+            return self.model(*data, *args, **kwargs)
         else:  # `condition` is not given for non wrapped model
-            return self.model(data.x, data.t)
+            return self.model(data.x, data.t, *args, **kwargs)
 
     @abc.abstractmethod
     def forward_diffusion(self, data: Any, t: torch.Tensor, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[Any, Any]:

@@ -256,9 +256,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
                 devices.empty_cache()
 
-    def to(self, device: torch.device) -> None:
-        super().to(device)
-
     def train_step(self, x_train: Any, y_train: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion and isinstance(x_train, torch.Tensor) and isinstance(y_train, DeviceMovable):

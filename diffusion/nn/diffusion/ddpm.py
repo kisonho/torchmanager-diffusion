@@ -1,5 +1,5 @@
 import torch
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from .protocols import BetaSpace, DiffusionData
 from .ode import ODESamplingDiffusionModule
@@ -18,8 +18,18 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
         - beta_space: A scheduled `BetaSpace`
         - with_condition: A `bool` flag to indicate whether the model is conditional or not
     """
-    beta_space: BetaSpace
     with_condition: bool
+
+    @property
+    def beta_space(self) -> BetaSpace:
+        return BetaSpace(cast(torch.Tensor, self._betas))
+
+    @beta_space.setter
+    def beta_space(self, beta_space: BetaSpace) -> None:
+        if "_betas" in self._buffers:
+            self._buffers["_betas"] = beta_space.betas
+        else:
+            self.register_buffer("_betas", beta_space.betas)
 
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, *, with_condition: bool = False) -> None:
         super().__init__(model, time_steps)
@@ -76,10 +86,6 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
             y += torch.sqrt(posterior_variance_t) * noise
         return (y, predicted_noise) if return_noise else y
 
-    def to(self, *args, **kwargs) -> "DDPMModule":
-        super().to(*args, **kwargs)
-        self.beta_space = self.beta_space.to(*args, **kwargs)
-        return self
 
 __all__ = ["DDPMModule"]
 DDPM = DDPMModule

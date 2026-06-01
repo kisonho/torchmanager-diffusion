@@ -124,9 +124,10 @@ class Manager(DiffusionManager[DM]):
             return super().train_step(x_train, y_train, forward_diffusion=forward_diffusion)
 
         # forward diffusion sampling
-        if forward_diffusion:
-            assert isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor), "The input and target must be a valid `torch.Tensor`."
+        if forward_diffusion and isinstance(x_train, torch.Tensor) and isinstance(y_train, torch.Tensor):
             x_t, objective = self.forward_diffusion(y_train.to(x_train.device), condition=x_train)
+        elif forward_diffusion:
+            x_t, objective = self.forward_diffusion(y_train, condition=x_train)
         else:
             x_t, objective = x_train, y_train
 
