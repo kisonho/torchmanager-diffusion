@@ -32,9 +32,9 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         super().__init__(diff_model, time_steps, encoder=encoder, decoder=decoder)
         self.c_lambda = c_lambda
 
-    def forward(self, data: DiffusionData) -> torch.Tensor:
+    def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         data = DiffusionData(data.x, data.t)
-        return super().forward(data)
+        return super().forward(data, *args, **kwargs)
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
@@ -58,7 +58,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         B_t = torch.where(torch.eq(t_reshaped, T), torch.zeros_like(B_t), B_t)
         xt = (1 - m_t) * x0 + m_t * xT + B_t * noise
         objective = m_t * (xT - x0) + B_t * noise
-        return DiffusionData(xt, t).to(data.device), objective.to(condition.device)
+        return DiffusionData(xt, t).to(condition.device), objective.to(data.device)
 
     def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # check if fast sampling

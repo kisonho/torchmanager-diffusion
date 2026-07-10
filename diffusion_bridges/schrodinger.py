@@ -108,9 +108,9 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
         std_fwd = self._gather_schedule(self.std_fwd, t, xt)
         return xt - std_fwd * predicted_obj
 
-    def forward(self, data: DiffusionData) -> torch.Tensor:
+    def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         data = DiffusionData(data.x, data.t)
-        return super().forward(data)
+        return super().forward(data, *args, **kwargs)
 
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)

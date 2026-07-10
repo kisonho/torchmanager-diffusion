@@ -153,7 +153,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
                 return zeros, ones, ones
         raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
-    def _run_model(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None) -> torch.Tensor:
+    def _run_model(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None, *args, **kwargs) -> torch.Tensor:
         # DDBM conditions the backbone on log-sigma rather than raw integer steps.
         condition = condition.to(x.device) if condition is not None else None
         sigma = sigma.to(device=x.device, dtype=x.dtype)
@@ -161,21 +161,21 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         x_in = self._get_bridge_scalings(sigma)[2] * x
         data = DiffusionData(x_in, rescaled_t, condition=condition)
         if condition is not None:
-            return self.model(*data)
-        return self.model(data.x, data.t)
+            return self.model(*data, *args, **kwargs)
+        return self.model(data.x, data.t, *args, **kwargs)
 
-    def _denoise(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None, *, clip_denoised: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
+    def _denoise(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor | None = None, *args, clip_denoised: bool = False, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         # Convert the network output back into the clean-sample estimate with bridge scalings.
         c_skip, c_out, _ = self._get_bridge_scalings(sigma)
-        model_output = self._run_model(x, sigma, condition=condition)
+        model_output = self._run_model(x, sigma, condition=condition, *args, **kwargs)
         denoised = c_out * model_output + c_skip * x
         if clip_denoised:
             denoised = denoised.clamp(-1, 1)
         return model_output, denoised
 
-    def forward(self, data: DiffusionData) -> torch.Tensor:
+    def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         sigma = self._gather_sigma(data.t, data.x)
-        _, denoised = self._denoise(data.x, sigma, condition=data.condition if isinstance(data.condition, torch.Tensor) else None)
+        _, denoised = self._denoise(data.x, sigma, condition=data.condition if isinstance(data.condition, torch.Tensor) else None, *args, **kwargs)
         return denoised
 
     def _bridge_sample(self, x_start: torch.Tensor, x_end: torch.Tensor, sigma: torch.Tensor, noise: torch.Tensor) -> torch.Tensor:
