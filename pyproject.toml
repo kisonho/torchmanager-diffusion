@@ -12,7 +12,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 einops = "*"
-torchmanager = { version = "^1.5b1", optional = true }
+torchmanager = { version = "^1.5", optional = true }
 torchvision = "*"
 
 [build-system]

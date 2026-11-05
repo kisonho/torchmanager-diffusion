@@ -7,6 +7,7 @@ Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=torch.nn.Module | None)
 D = TypeVar('D', bound=torch.nn.Module | None)
 
+
 class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module]):
     """
     The A-Bridge BBDM with algorithm in sec. 1 and 2 offered by Prof. Wang.
