@@ -1,21 +1,27 @@
+from typing_extensions import override
 import torch, unittest
 from typing import cast
+
+from diffusion.data import DiffusionData
 
 
 class _EchoTimedModule(torch.nn.Module):
     last_t: torch.Tensor | None
 
+    @override
     def __init__(self, value: float = 1.0) -> None:
         super().__init__()
         self.value = value
         self.last_t = None
 
+    @override
     def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         self.last_t = t.detach().clone()
         return torch.full_like(x, self.value)
 
 
 class _LargeConditionalModule(torch.nn.Module):
+    @override
     def forward(self, x: torch.Tensor, t: torch.Tensor, condition: torch.Tensor | None = None) -> torch.Tensor:
         return torch.full_like(x, 100.0)
 
@@ -86,7 +92,8 @@ class Case0103(unittest.TestCase):
         from diffusion.sde import VPSDE
 
         steps = 10
-        x = torch.randn((2, 3, 4, 4))
+        # Avoid cancellation when recovering the noise from the noised input.
+        x = torch.zeros((2, 3, 4, 4))
         t = torch.tensor([0.2, 0.7])
         beta_space = linear_schedule(steps)
         module = SDEModule(_EchoTimedModule(), VPSDE(steps, beta_space=beta_space), steps, beta_space=beta_space)

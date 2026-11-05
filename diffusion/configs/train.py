@@ -1,3 +1,5 @@
+from typing import overload
+from typing_extensions import override
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, raise_error, VERSION as tm_version
 
@@ -20,6 +22,7 @@ class TrainingConfigs(_Configs):
     def default_device(self) -> torch.device | None:
         return None if self.devices is None else self.devices[0]
 
+    @override
     def format_arguments(self) -> None:
         # format arguments
         super().format_arguments()
@@ -45,13 +48,24 @@ class TrainingConfigs(_Configs):
         assert self.time_steps > 0, raise_error(ValueError(f"Time steps must be a positive number, got {self.time_steps}."))
 
     @staticmethod
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ...) -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
         parser.add_argument("output_model", type=str, help="The path for the final PyTorch model.")
 
         # training arguments
-        training_args = parser.add_argument_group("Training Arguments")
+        training_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("Training Arguments")
         training_args.add_argument("-b", "--batch_size", type=int, default=64, help="The batch size, default is 64.")
         training_args.add_argument("-e", "--epochs", type=int, default=100, help="The training epochs, default is 100.")
         training_args.add_argument("-t", "--time_steps", type=int, default=1000, help="The total time steps of diffusion model, default is 1000.")
@@ -61,14 +75,16 @@ class TrainingConfigs(_Configs):
         training_args = _Configs.get_arguments(training_args)
 
         # device arguments
-        device_args = parser.add_argument_group("Device Arguments")
+        device_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("Device Arguments")
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
+    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"torchmanager={tm_version}")
 
+    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Output model: {self.output_model}")
@@ -84,6 +100,7 @@ class DDPMTrainingConfigs(TrainingConfigs):
     beta_range: list[float] | None
     beta_scheduler: BetaScheduler
 
+    @override
     def format_arguments(self) -> None:
         # format arguments
         self.beta_scheduler = BetaScheduler(self.beta_scheduler)
@@ -97,16 +114,28 @@ class DDPMTrainingConfigs(TrainingConfigs):
         super().format_arguments()
 
     @staticmethod
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ...) -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = TrainingConfigs.get_arguments(parser)
 
         # diffusion arguments
-        diffusion_args = parser.add_argument_group("DDPM Arguments")
+        diffusion_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("DDPM Arguments")
         diffusion_args.add_argument("-beta", "--beta_scheduler", type=str, default="linear", help="The beta scheduler for diffusion model, default is 'linear'.")
         diffusion_args.add_argument("--beta_range", type=float, default=None, nargs=2, help="The range of mid-linear scheduler, default is `None`.")
         return parser
 
+    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
@@ -116,20 +145,33 @@ class SDETrainingConfigs(TrainingConfigs):
     """Training Configurations for SDE."""
     sde_type: SDEType
 
+    @override
     def format_arguments(self) -> None:
         self.sde_type = self.sde_type if isinstance(self.sde_type, SDEType) else SDEType[str(self.sde_type).upper()]
         super().format_arguments()
 
     @staticmethod
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ...) -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = TrainingConfigs.get_arguments(parser)
 
         # diffusion arguments
-        diffusion_args = parser.add_argument_group("SDE Arguments")
+        diffusion_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("SDE Arguments")
         diffusion_args.add_argument("-sde", "--sde_type", type=str, default="VE", help="The type of SDE, default is 'VE'.")
         return parser
 
+    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"SDE settings: sde_type={self.sde_type.name}")

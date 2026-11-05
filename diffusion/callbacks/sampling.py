@@ -1,3 +1,4 @@
+from typing_extensions import override
 from PIL import Image
 from torchmanager.callbacks import FrequencyCallback
 from torchmanager.data import Dataset
@@ -34,6 +35,7 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
     show_verbose: bool
     use_multi_gpus: bool
 
+    @override
     def __init__(self, sampling_data: Sequence[torch.Tensor] | Dataset[torch.Tensor], sampling_dir: str, sampling_target: S, *, frequency: int = 20, initial_epoch: int = 0, sampling_device: list[torch.device] | torch.device | None = None, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False, use_multi_gpus: bool = False) -> None:
         """
         Construct sampling callback for Diffusion Models.
@@ -59,6 +61,7 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
         self.show_verbose = show_verbose
         self.use_multi_gpus = use_multi_gpus
 
+    @override
     def _update(self, result: zip[tuple[torch.Tensor, torch.Tensor]]) -> None:
         # save sampled images
         for i, (img, sample) in enumerate(result):
@@ -72,10 +75,12 @@ class SamplingCallback(FrequencyCallback, Generic[S]):
             Image.fromarray(img).save(img_path)
             Image.fromarray(sample).save(sample_path)
 
+    @override
     def on_epoch_end(self, epoch: int, summary: dict[str, float] = {}, val_summary: dict[str, float] | None = None) -> None:
         if epoch % self.frequency == 0 and epoch != 0:
             super().on_epoch_end(epoch, summary, val_summary)
 
+    @override
     def step(self, *args: Any, **kwargs: Any) -> zip[tuple[torch.Tensor, torch.Tensor]]:
         # initialize samples
         imgs: list[torch.Tensor] = []

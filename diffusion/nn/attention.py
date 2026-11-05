@@ -1,8 +1,10 @@
+from typing_extensions import override
 import torch
 from einops import rearrange
 
 
 class Attention(torch.nn.Module):
+    @override
     def __init__(self, dim, heads=4, dim_head=32):
         super().__init__()
         self.scale = dim_head ** -0.5
@@ -11,6 +13,7 @@ class Attention(torch.nn.Module):
         self.to_qkv = torch.nn.Conv2d(dim, hidden_dim * 3, 1, bias=False)
         self.to_out = torch.nn.Conv2d(hidden_dim, dim, 1)
 
+    @override
     def forward(self, x: torch.Tensor):
         _, _, h, w = x.shape
         qkv: torch.Tensor = self.to_qkv(x)
@@ -28,6 +31,7 @@ class Attention(torch.nn.Module):
 
 
 class LinearAttention(torch.nn.Module):
+    @override
     def __init__(self, dim: int, heads: int = 4, dim_head: int = 32):
         super().__init__()
         self.scale = dim_head ** -0.5
@@ -36,6 +40,7 @@ class LinearAttention(torch.nn.Module):
         self.to_qkv = torch.nn.Conv2d(dim, hidden_dim * 3, 1, bias=False)
         self.to_out = torch.nn.Sequential(torch.nn.Conv2d(hidden_dim, dim, 1), torch.nn.GroupNorm(1, dim))
 
+    @override
     def forward(self, x: torch.Tensor):
         _, _, h, w = x.shape
         qkv: torch.Tensor = self.to_qkv(x)

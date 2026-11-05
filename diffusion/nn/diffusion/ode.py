@@ -1,5 +1,6 @@
+from typing import Literal, TypeVar, overload
+from typing_extensions import override
 import abc, torch
-from typing import TypeVar, overload
 
 from diffusion.data.diffusion import DiffusionData
 
@@ -30,38 +31,37 @@ class ODESamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
     def use_ode(self, use_ode: bool):
         self.__use_ode = use_ode
 
+    @override
     def __init__(self, model: Module, time_steps: int, *, use_ode: bool = False) -> None:
         super().__init__(model, time_steps)
         self.use_ode = use_ode
 
     @overload
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
         ...
 
     @overload
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @overload
-    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
+    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         return self.ode_sampling_step(data, i, predicted_obj=predicted_obj, return_noise=return_noise) if self.use_ode else self.sde_sampling_step(data, i, predicted_obj=predicted_obj, return_noise=return_noise)
 
     @overload
-    @abc.abstractmethod
-    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
         ...
 
     @overload
-    @abc.abstractmethod
-    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor:
+    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @overload
-    @abc.abstractmethod
-    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod
@@ -79,18 +79,15 @@ class ODESamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
         ...
 
     @overload
-    @abc.abstractmethod
-    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
         ...
 
     @overload
-    @abc.abstractmethod
-    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor:
+    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @overload
-    @abc.abstractmethod
-    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod

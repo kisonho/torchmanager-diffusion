@@ -1,3 +1,4 @@
+from typing_extensions import override
 from torch.utils.data import DataLoader, Dataset as _TorchDataset
 from torchmanager.data import Dataset
 from torchmanager_core import devices, torch
@@ -19,15 +20,18 @@ class UnsupervisedDataset(Dataset[T]):
     """
     data: Union[_TorchDataset[tuple[T, ...]], Sequence[tuple[T, ...]]]
 
+    @override
     def __init__(self, data: Union[_TorchDataset[tuple[T, ...]], Sequence[tuple[T, ...]]], batch_size: int, device: torch.device = devices.CPU, drop_last: bool = False, shuffle: bool = False) -> None:
         super().__init__(batch_size, device=device, drop_last=drop_last, shuffle=shuffle)
         self.data = data
 
+    @override
     def __getitem__(self, index: Any) -> T:
         x = self.data[index][0]
         return x
 
     @property
+    @override
     def unbatched_len(self) -> int:
         if isinstance(self.data, Sized):
             return len(self.data)

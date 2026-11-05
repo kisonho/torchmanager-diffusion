@@ -1,3 +1,4 @@
+from typing_extensions import override
 import torch
 from functools import partial
 from typing import Type
@@ -6,6 +7,7 @@ from .protocols import Attention, ConvNextBlock, LinearAttention, PreNorm, Resid
 
 
 class UNet(torch.nn.Module):
+    @override
     def __init__(
             self,
             dim: int,
@@ -85,6 +87,7 @@ class UNet(torch.nn.Module):
             block_type(dim, dim, conv_type=Conv2d), Conv2d(dim, out_dim, 1)
         )
 
+    @override
     def forward(self, x: torch.Tensor, time: torch.Tensor | None = None) -> torch.Tensor:
         x = self.init_conv(x)
         t = self.time_mlp(time) if self.time_mlp is not None else None
@@ -118,6 +121,7 @@ class UNet(torch.nn.Module):
 
 
 class TimedUNet(TimedModule, UNet):
+    @override
     def unpack_data(self, x_in: TimedData) -> tuple[torch.Tensor, ...]:
         return x_in.x, x_in.t
 

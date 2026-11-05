@@ -1,4 +1,5 @@
-from abc import abstractmethod
+from typing_extensions import override
+from abc import ABC, abstractmethod
 import math
 from typing import Sequence
 
@@ -58,6 +59,7 @@ class AttentionPool2d(nn.Module):
     Adapted from CLIP: https://github.com/openai/CLIP/blob/main/clip/model.py
     """
 
+    @override
     def __init__(
         self,
         spacial_dim: int,
@@ -72,6 +74,7 @@ class AttentionPool2d(nn.Module):
         self.num_heads = embed_dim // num_heads_channels
         self.attention = QKVAttention(self.num_heads)
 
+    @override
     def forward(self, x):
         b, c, *_spatial = x.shape
         x = x.reshape(b, c, -1)  # NC(HW)
@@ -83,13 +86,13 @@ class AttentionPool2d(nn.Module):
         return x[:, :, 0]
 
 
-class TimestepBlock(nn.Module):
+class TimestepBlock(ABC):
     """
     Any module where forward() takes timestep embeddings as a second argument.
     """
 
     @abstractmethod
-    def forward(self, x, emb):
+    def forward(self, x, /, emb):
         """
         Apply the module to `x` given `emb` timestep embeddings.
         """
@@ -101,7 +104,9 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
     support it as an extra input.
     """
 
-    def forward(self, x, emb, context=None):
+    @override
+    def forward(self, input, emb=None, context=None):
+        x = input
         # pdb.set_trace()
         for layer in self:
             if isinstance(layer, TimestepBlock):
@@ -120,6 +125,7 @@ class Upsample(nn.Module):
                  upsampling occurs in the inner-two dimensions.
     """
 
+    @override
     def __init__(self, channels, use_conv, dims=2, out_channels=None, padding=1):
         super().__init__()
         self.channels = channels
@@ -129,6 +135,7 @@ class Upsample(nn.Module):
         if use_conv:
             self.conv = conv_nd(dims, self.channels, self.out_channels, 3, padding=padding)
 
+    @override
     def forward(self, x):
         assert x.shape[1] == self.channels
         if self.dims == 3:
@@ -144,6 +151,7 @@ class Upsample(nn.Module):
 
 class TransposedUpsample(nn.Module):
     'Learned 2x upsampling without padding'
+    @override
     def __init__(self, channels, out_channels=None, ks=5):
         super().__init__()
         self.channels = channels
@@ -151,6 +159,7 @@ class TransposedUpsample(nn.Module):
 
         self.up = nn.ConvTranspose2d(self.channels,self.out_channels,kernel_size=ks,stride=2)
 
+    @override
     def forward(self,x):
         return self.up(x)
 
@@ -164,6 +173,7 @@ class Downsample(nn.Module):
                  downsampling occurs in the inner-two dimensions.
     """
 
+    @override
     def __init__(self, channels, use_conv, dims=2, out_channels=None,padding=1):
         super().__init__()
         self.channels = channels
@@ -179,12 +189,13 @@ class Downsample(nn.Module):
             assert self.channels == self.out_channels
             self.op = avg_pool_nd(dims, kernel_size=stride, stride=stride)
 
+    @override
     def forward(self, x):
         assert x.shape[1] == self.channels
         return self.op(x)
 
 
-class ResBlock(TimestepBlock):
+class ResBlock(TimestepBlock, nn.Module):
     """
     A residual block that can optionally change the number of channels.
     :param channels: the number of input channels.
@@ -200,6 +211,7 @@ class ResBlock(TimestepBlock):
     :param down: if True, use this block for downsampling.
     """
 
+    @override
     def __init__(
         self,
         channels,
@@ -264,6 +276,7 @@ class ResBlock(TimestepBlock):
         else:
             self.skip_connection = conv_nd(dims, channels, self.out_channels, 1)
 
+    @override
     def forward(self, x, emb):
         """
         Apply the block to a Tensor, conditioned on a timestep embedding.
@@ -306,6 +319,7 @@ class AttentionBlock(nn.Module):
     https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0706c543/diffusion_tf/models/unet.py#L66.
     """
 
+    @override
     def __init__(
         self,
         channels,
@@ -335,6 +349,7 @@ class AttentionBlock(nn.Module):
 
         self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
 
+    @override
     def forward(self, x):
         return checkpoint(self._forward, (x,), self.parameters(), True)   # TODO: check checkpoint usage, is True # TODO: fix the .half call!!!
         #return pt_checkpoint(self._forward, x)  # pytorch
@@ -373,10 +388,12 @@ class QKVAttentionLegacy(nn.Module):
     A module which performs QKV attention. Matches legacy QKVAttention + input/ouput heads shaping
     """
 
+    @override
     def __init__(self, n_heads):
         super().__init__()
         self.n_heads = n_heads
 
+    @override
     def forward(self, qkv):
         """
         Apply QKV attention.
@@ -405,10 +422,12 @@ class QKVAttention(nn.Module):
     A module which performs QKV attention and splits in a different order.
     """
 
+    @override
     def __init__(self, n_heads):
         super().__init__()
         self.n_heads = n_heads
 
+    @override
     def forward(self, qkv):
         """
         Apply QKV attention.
@@ -464,6 +483,7 @@ class ConditionalUNet(th.nn.Module):
                                     increased efficiency.
     """
 
+    @override
     def __init__(
         self,
         in_channels: int,
@@ -695,6 +715,7 @@ class ConditionalUNet(th.nn.Module):
         self.output_blocks.apply(convert_module_to_f32)
         self.dtype = th.float32
 
+    @override
     def forward(self, x, timesteps: int | None = None, context: th.Tensor | None = None, y: th.Tensor | None = None) -> th.Tensor:
         """
         Apply the model to an input batch.
@@ -740,6 +761,7 @@ class EncoderUNetModel(nn.Module):
     For usage, see UNet.
     """
 
+    @override
     def __init__(
         self,
         image_size,
@@ -927,6 +949,7 @@ class EncoderUNetModel(nn.Module):
         self.input_blocks.apply(convert_module_to_f32)
         self.middle_block.apply(convert_module_to_f32)
 
+    @override
     def forward(self, x, timesteps):
         """
         Apply the model to an input batch.

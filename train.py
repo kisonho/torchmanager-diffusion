@@ -1,3 +1,5 @@
+from typing import overload
+from typing_extensions import override
 from torchmanager import callbacks, losses
 from torchmanager_core import argparse, torch, view
 from torchmanager_core.typing import Union
@@ -9,15 +11,28 @@ from diffusion.configs import DDPMTrainingConfigs
 class TrainingConfigs(DDPMTrainingConfigs):
     dataset: data.Datasets
 
+    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         self.dataset = data.Datasets(self.dataset)
 
     @staticmethod
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ...) -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
     def get_arguments(parser: Union[argparse.ArgumentParser, argparse._ArgumentGroup] = argparse.ArgumentParser()) -> Union[argparse.ArgumentParser, argparse._ArgumentGroup]:
         parser.add_argument("--dataset", type=str, help="The dataset used for training")
         return DDPMTrainingConfigs.get_arguments(parser)
 
+    @override
     def show_settings(self) -> None:
         view.logger.info(f"Dataset: {self.dataset}")
         super().show_settings()

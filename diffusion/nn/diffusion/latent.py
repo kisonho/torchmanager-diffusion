@@ -1,6 +1,7 @@
+from typing_extensions import override
 import abc, torch
 from enum import Enum
-from typing import Any, Generic, TypeVar, overload
+from typing import Literal, Any, Generic, TypeVar, overload
 
 from .diffusion import DiffusionModule
 from .ddpm import DDPMModule
@@ -40,6 +41,7 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
     encoder: E
     decoder: D
 
+    @override
     def __init__(self, model: Module, time_steps: int, /, *, encoder: E = None, decoder: D = None) -> None:
         super().__init__(model, time_steps)
         # initialize encoder
@@ -65,17 +67,18 @@ class LatentDiffusionModule(DiffusionModule[Module], Generic[Module, E, D], abc.
         return self.encoder(x)
 
     @overload
+    def __call__(self, x_in: torch.Tensor, *, mode: Literal[LatentMode.DECODE]) -> torch.Tensor:
+        ...
+
+    @overload
+    def __call__(self, x_in: torch.Tensor, *, mode: Literal[LatentMode.ENCODE]) -> torch.Tensor:
+        ...
+
+    @overload
     def __call__(self, x_in: Any, *args, mode: LatentMode = LatentMode.FORWARD, **kwargs) -> Any:
         ...
 
-    @overload
-    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.DECODE) -> torch.Tensor:
-        ...
-
-    @overload
-    def __call__(self, x_in: torch.Tensor, mode: LatentMode = LatentMode.ENCODE) -> torch.Tensor:
-        ...
-
+    @override
     def __call__(self, *args, mode: LatentMode = LatentMode.FORWARD, **kwargs) -> Any:
         if mode == LatentMode.ENCODE:
             return self.encode(*args, **kwargs)
@@ -89,6 +92,7 @@ class LDM(LatentDiffusionModule[Module, E, D], DDPMModule[Module]):
     """
     Latent DDPM module.
     """
+    @override
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, /, *, encoder: E = None, decoder: D = None, with_condition: bool = False) -> None:
         LatentDiffusionModule.__init__(self, model, time_steps, encoder=encoder, decoder=decoder)
         DDPMModule.__init__(self, model, beta_space, time_steps, with_condition=with_condition)

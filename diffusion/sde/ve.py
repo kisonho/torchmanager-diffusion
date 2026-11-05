@@ -1,3 +1,4 @@
+from typing_extensions import override
 import numpy as np, torch
 from typing import Collection
 
@@ -5,6 +6,7 @@ from .base import SDE
 
 
 class VESDE(SDE):
+    @override
     def __init__(self, N: int, /, sigma_min: float = 0.01, sigma_max: float = 50):
         """Construct a Variance Exploding SDE.
 
@@ -19,12 +21,14 @@ class VESDE(SDE):
         self.discrete_sigmas = torch.exp(torch.linspace(np.log(self.sigma_min), np.log(self.sigma_max), N))
         self.N = N
 
+    @override
     def __call__(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         sigma = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
         drift = torch.zeros_like(x)
         diffusion = sigma * torch.sqrt(torch.tensor(2 * (np.log(self.sigma_max) - np.log(self.sigma_min)), device=t.device))
         return drift, diffusion
 
+    @override
     def discretize(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """SMLD(NCSN) discretization."""
         timestep = (t * (self.N - 1) / self.T).long()
@@ -34,16 +38,19 @@ class VESDE(SDE):
         G = torch.sqrt(sigma ** 2 - adjacent_sigma ** 2)
         return f, G
     
+    @override
     def marginal_prob(self, x: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         std = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
         mean = x
         return mean, std
 
+    @override
     def prior_logp(self, z: torch.Tensor) -> torch.Tensor:
         shape = z.shape
         N = np.prod(shape[1:])
         return - N / 2. * np.log(2 * np.pi * self.sigma_max ** 2) - (z ** 2).sum(dim=(1, 2, 3)) / (2 * self.sigma_max ** 2)
 
+    @override
     def prior_sampling(self, shape: Collection[int]) -> torch.Tensor:
         return torch.randn(*shape) * self.sigma_max
 

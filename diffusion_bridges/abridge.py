@@ -1,7 +1,8 @@
+from typing import Literal, TypeVar, overload
+from typing_extensions import override
 import math, torch
 from diffusion.data import DiffusionData
 from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
-from typing import  TypeVar
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=torch.nn.Module | None)
@@ -19,6 +20,7 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
     c_lambda: float
     """The lambda coefficient for the A-Bridge BBDM in `float`."""
 
+    @override
     def __init__(self, diff_model: Module, time_steps: int, *, c_lambda: float = 2, encoder: E = None, decoder: D = None) -> None:
         """
         Initialize the A-Bridge BBDM module.
@@ -33,10 +35,12 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         super().__init__(diff_model, time_steps, encoder=encoder, decoder=decoder)
         self.c_lambda = c_lambda
 
+    @override
     def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         data = DiffusionData(data.x, data.t)
         return super().forward(data, *args, **kwargs)
 
+    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
     ]:
@@ -61,6 +65,19 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
         objective = m_t * (xT - x0) + B_t * noise
         return DiffusionData(xt, t).to(condition.device), objective.to(data.device)
 
+    @overload
+    def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def sampling_step(self, data: DiffusionData[torch.Tensor], i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # check if fast sampling
         if self.fast_sampling_steps is not None:
@@ -115,6 +132,19 @@ class ABridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionMo
             x_t_minus_one = c_xt * data.x - c_yt * data.condition - c_epst * predicted_obj - c_zt * new_noise
         return (x_t_minus_one, predicted_obj) if return_noise else x_t_minus_one
 
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[False] = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[True], predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # check condition
         assert data.condition is not None, "Condition must be given for A-Bridge."

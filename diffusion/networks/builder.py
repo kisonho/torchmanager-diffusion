@@ -1,17 +1,20 @@
 import torch
-from typing import Type, overload
+from typing import Literal, Type, overload
 
 from .openai import ConditionalUNet
 from .unet import TimedUNet, UNet
 
 
 @overload
-def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, with_time_emb: bool = True) -> UNet: ...
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: Literal[False] = False, with_time_emb: bool = True) -> UNet: ...
 
 
 @overload
-def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = True, with_time_emb: bool = True) -> TimedUNet: ...
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: Literal[True], with_time_emb: bool = True) -> TimedUNet: ...
 
+
+@overload
+def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False, with_time_emb: bool = True) -> UNet: ...
 
 def build(in_channels: int, out_channels: int, /, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dim_mults: tuple[int, ...] = (1, 2, 2, 2), dropout: float = 0.1, use_timed_data: bool = False, with_time_emb: bool = True) -> UNet:
     """

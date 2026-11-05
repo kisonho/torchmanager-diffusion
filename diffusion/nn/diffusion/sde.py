@@ -1,5 +1,6 @@
+from typing import Generic, Literal, TypeVar, overload
+from typing_extensions import override
 import torch, warnings
-from typing import Generic, TypeVar
 
 from .diffusion import DiffusionModule
 from .protocols import BetaSpace, DiffusionData, SDE, SubVPSDE, VESDE, VPSDE
@@ -37,6 +38,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
         self.__epsilon = value
 
+    @override
     def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: BetaSpace | None = None, epsilon: float = 1e-5, is_continous: bool = False) -> None:
         """
         Constructor
@@ -98,10 +100,12 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             return super().forward(DiffusionData(x, labels, condition=data.condition))
         raise NotImplementedError(f"SDE class {type(self.sde)} not yet supported.")
 
+    @override
     def forward(self, data: DiffusionData) -> torch.Tensor:
         return self._score(data)
 
-    def forward_diffusion(self, data: torch.Tensor, condition: torch.Tensor | None = None, t: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
+    @override
+    def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # sampling t
         if t is not None:
             t = self._continuous_time(t.to(data.device))
@@ -124,7 +128,20 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         score = -z / std
         return DiffusionData(x, t, condition=condition), score
 
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # predict
         if isinstance(self.sde, VESDE):
             # The ancestral sampling predictor for VESDE
@@ -133,7 +150,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             sigmas = self.sde.discrete_sigmas.to(data.x.device)
             sigma = sigmas[timestep]
             adjacent_sigma = torch.where(timestep == 0, torch.zeros_like(sigma), sigmas[timestep - 1])
-            score = self.forward(DiffusionData(data.x, t, condition=data.condition))
+            score = self.forward(DiffusionData(data.x, t, condition=data.condition)) if predicted_obj is None else predicted_obj
             x_mean = data.x + score * (sigma ** 2 - adjacent_sigma ** 2)[:, None, None, None]
             std = torch.sqrt(torch.clamp((adjacent_sigma ** 2 * (sigma ** 2 - adjacent_sigma ** 2)) / torch.clamp(sigma ** 2, min=1e-12), min=0.0))
             noise = torch.randn_like(data.x)
@@ -145,7 +162,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             t = self._continuous_time(data.t)
             timestep = (t * (self.sde.N - 1) / self.sde.T).long()
             beta = self.beta_space.betas.to(data.x.device)[timestep]
-            score = self.forward(DiffusionData(data.x, t, condition=data.condition))
+            score = self.forward(DiffusionData(data.x, t, condition=data.condition)) if predicted_obj is None else predicted_obj
             x_mean = (data.x + beta[:, None, None, None] * score) / torch.sqrt(1. - beta)[:, None, None, None]
             noise = torch.randn_like(data.x)
             y = x_mean + torch.sqrt(beta)[:, None, None, None] * noise
@@ -153,7 +170,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         else:
             # The traditional reverse diffusion predictor
             t = self._continuous_time(data.t)
-            score = self.forward(DiffusionData(data.x, t, condition=data.condition))
+            score = self.forward(DiffusionData(data.x, t, condition=data.condition)) if predicted_obj is None else predicted_obj
             f, G = self.sde.discretize(data.x, t)
             f = f - G[:, None, None, None] ** 2 * score
             z = torch.randn_like(data.x)
@@ -162,6 +179,7 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             predicted_score = score
         return (y, predicted_score) if return_noise else y
 
+    @override
     def to(self, *args, **kwargs) -> "SDEModule[Module, SDEType]":
         super().to(*args, **kwargs)
         if self.beta_space is not None:

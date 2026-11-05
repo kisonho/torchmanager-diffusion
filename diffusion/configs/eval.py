@@ -1,3 +1,5 @@
+from typing import Any, overload
+from typing_extensions import override
 import torchmanager
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, raise_error
@@ -17,6 +19,7 @@ class EvalConfigs(_Configs):
     use_multi_gpus: bool
     use_ode: bool
 
+    @override
     def format_arguments(self) -> None:
         # format arguments
         super().format_arguments()
@@ -37,6 +40,17 @@ class EvalConfigs(_Configs):
         view.logger.addHandler(console)
 
     @staticmethod
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ..., *, batch_size: int = 64, device: str | None = None, model_help: str = 'The path for a pre-trained PyTorch model or a torchmanager checkpoint, default is `None`.') -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup, *, batch_size: int = 64, device: str | None = None, model_help: str = 'The path for a pre-trained PyTorch model or a torchmanager checkpoint, default is `None`.') -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
     def get_arguments(
         parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser(),
         *,
@@ -49,7 +63,7 @@ class EvalConfigs(_Configs):
         parser.add_argument("model", type=str, help=model_help)
 
         # testing arguments
-        testing_args = parser.add_argument_group("Testing Arguments")
+        testing_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("Testing Arguments")
         testing_args.add_argument("-b", "--batch_size", type=int, default=batch_size, help=f"The batch size, default is {batch_size}.")
         testing_args.add_argument("--fast_sampling", action="store_true", default=False, help="A flag to use fast sampling.")
         testing_args.add_argument("--show_verbose", action="store_true", default=False, help="A flag to show verbose.")
@@ -58,15 +72,17 @@ class EvalConfigs(_Configs):
         testing_args = _Configs.get_arguments(testing_args)
 
         # device arguments
-        device_args = parser.add_argument_group("Device Arguments")
+        device_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("Device Arguments")
         device_args.add_argument("--device", type=str, default=device, help="The target device to run for the experiment.")
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
+    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"torchmanager={torchmanager.version}")
 
+    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Pre-trained model: {self.model}")
@@ -80,25 +96,39 @@ class DDPMEvalConfigs(EvalConfigs):
     beta_scheduler: str | None
     image_size: int
 
+    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         assert self.image_size > 0, raise_error(ValueError(f"Image size must be a positive number, got {self.image_size}."))
 
     @staticmethod
-    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
+    @overload
+    def get_arguments(parser: argparse.ArgumentParser = ..., **kwargs: Any) -> argparse.ArgumentParser:
+        ...
+
+    @staticmethod
+    @overload
+    def get_arguments(parser: argparse._ArgumentGroup, **kwargs: Any) -> argparse._ArgumentGroup:
+        ...
+
+    @staticmethod
+    @override
+    def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser(), **kwargs: Any) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = EvalConfigs.get_arguments(
             parser,
-            batch_size=1,
-            device="cuda",
-            model_help="The path for a pre-trained PyTorch model, default is `None`.",
+            batch_size=kwargs.pop("batch_size", 1),
+            device=kwargs.pop("device", "cuda"),
+            model_help=kwargs.pop("model_help", "The path for a pre-trained PyTorch model, default is `None`."),
+            **kwargs,
         )
 
         # DDPM arguments
-        ddpm_args = parser.add_argument_group("DDPM Arguments")
+        ddpm_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("DDPM Arguments")
         ddpm_args.add_argument("-beta", "--beta_scheduler", type=str, default=None, help="The beta scheduler for diffusion model, default is 'None' (Checkpoint is needed).")
         ddpm_args.add_argument("-size", "--image_size", type=int, default=32, help="The image size to generate, default is 32.")
         return parser
 
+    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Model: {self.model}")

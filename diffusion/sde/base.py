@@ -1,3 +1,4 @@
+from typing_extensions import override
 """Abstract SDE classes, Reverse SDE, and VE/VP SDEs."""
 import abc, torch
 from typing import Collection
@@ -23,6 +24,7 @@ class SDE(abc.ABC):
     is_reversing: bool
     N: int
 
+    @override
     def __init__(self, N: int, /) -> None:
         """Construct an SDE.
 

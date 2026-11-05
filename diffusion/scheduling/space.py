@@ -1,3 +1,4 @@
+from typing_extensions import override
 import torch
 from torch.nn import functional as F
 from typing import NamedTuple
@@ -68,9 +69,11 @@ class BetaSpace(NamedTuple):
         """A `torch.Size` of the shape of betas"""
         return self.betas.shape
     
+    @override
     def __len__(self) -> int:
         return len(self.betas)
 
+    @override
     def __repr__(self) -> str:
         return f"<BetaSpace {self.shape}>:\n \
                 beta={self.betas}>"

@@ -1,7 +1,8 @@
+from typing_extensions import override
 import copy, torch
 from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer
-from typing import Any, Callable, Iterable, Generic, Required, TypedDict, TypeVar, cast
+from typing import Any, Callable, Iterable, Generic, Required, TypedDict, TypeVar, cast, overload
 
 O = TypeVar('O', bound=Optimizer)
 
@@ -49,6 +50,7 @@ class EMAOptimizer(Optimizer, Generic[O]):
             raise ValueError("EMA decay should be in the range (0, 1).")
         self.__ema_decay = value
 
+    @override
     def __init__(self, optimizer: O, parameters: Iterable[Parameter], *, ema_decay: float = 0.999) -> None:
         """
         Wrap a base optimizer and maintain Exponential Moving Average (EMA) of model parameters.
@@ -80,12 +82,14 @@ class EMAOptimizer(Optimizer, Generic[O]):
         if self.is_ema_parameters:
             self.swap_parameters()
 
-    def __getstate__(self) -> EMAState:
+    @override
+    def __getstate__(self) -> dict[str, Any]:
         optim_state = super().__getstate__()
-        full_state = EMAState(optim_state=optim_state, ema_decay=self.ema_decay, ema_params=self.ema_params, base_optimizer=self.base_optimizer, params=self.params)
+        full_state = dict(optim_state=optim_state, ema_decay=self.ema_decay, ema_params=self.ema_params, base_optimizer=self.base_optimizer, params=self.params)
         return full_state
 
-    def __setstate__(self, state: EMAState) -> None:
+    @override
+    def __setstate__(self, state: dict[str, Any]) -> None:
         super().__setstate__(state['optim_state'])
         self.ema_decay = state['ema_decay']
         self.ema_params = state['ema_params']
@@ -93,6 +97,13 @@ class EMAOptimizer(Optimizer, Generic[O]):
         self.params = state['params']
         self.is_ema_parameters = False
 
+    @overload
+    def step(self, closure: None = None) -> None: ...
+
+    @overload
+    def step(self, closure: Callable[[], float]) -> float: ...
+
+    @override
     def step(self, closure: Callable[[], float] | None = None) -> float | None:
         """
         Perform a single optimization step and update EMA parameters.
@@ -121,6 +132,7 @@ class EMAOptimizer(Optimizer, Generic[O]):
             for ema_param, param in zip(self.ema_params, self.params):
                 ema_param.data.mul_(self.ema_decay).add_(param.data, alpha=(1.0 - self.ema_decay))
 
+    @override
     def state_dict(self) -> dict[str, Any]:
         """
         Save the state of both the base optimizer and the EMA parameters.
@@ -134,6 +146,7 @@ class EMAOptimizer(Optimizer, Generic[O]):
             'ema_decay': self.ema_decay,
         }
 
+    @override
     def load_state_dict(self, state_dict: dict[str, Any]) -> None:
         """
         Load the state for both the base optimizer and the EMA parameters.
@@ -163,11 +176,12 @@ class EMAOptimizer(Optimizer, Generic[O]):
             self.swap_parameters()
         return self
 
-    def zero_grad(self) -> None:
+    @override
+    def zero_grad(self, set_to_none: bool = True) -> None:
         """
         Zero the gradients of the base optimizer.
         """
-        self.base_optimizer.zero_grad()
+        self.base_optimizer.zero_grad(set_to_none=set_to_none)
 
 
 __all__ = ["EMAState", "EMAOptimizer"]

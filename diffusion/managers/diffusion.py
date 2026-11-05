@@ -1,3 +1,5 @@
+from typing import Literal, overload
+from typing_extensions import override
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.optim.optimizer import Optimizer
@@ -6,7 +8,7 @@ from torchmanager import losses, metrics
 from torchmanager.callbacks import Callback
 from torchmanager.data import Dataset
 from torchmanager_core import devices, torch, view, _raise
-from torchmanager_core.typing import Any, Collection, TypeVar, cast, overload
+from torchmanager_core.typing import Any, Collection, TypeVar, cast
 
 from .base import DiffusionManager
 from .protocols import DiffusionData, DiffusionModule
@@ -42,6 +44,7 @@ class Manager(DiffusionManager[DM]):
             self.__accumulation_steps = s
 
     @property
+    @override
     def current_batch(self) -> int:
         return self.__current_batch
 
@@ -53,10 +56,12 @@ class Manager(DiffusionManager[DM]):
             self.__current_batch = b
 
     @property
+    @override
     def time_steps(self) -> int:
         return self.raw_model.time_steps
 
     @time_steps.setter
+    @override
     def time_steps(self, time_steps: int) -> None:
         self.raw_model.time_steps = time_steps
 
@@ -72,6 +77,7 @@ class Manager(DiffusionManager[DM]):
         elif not use_fp16 and self.scaler is not None:
             self.scaler = None
 
+    @override
     def __init__(self, model: DM, optimizer: Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}, use_fp16: bool = False, *, accumulative_steps: int = 1) -> None:
         super().__init__(model, model.time_steps, optimizer, loss_fn, metrics)
         self.accumulation_steps = accumulative_steps
@@ -83,42 +89,53 @@ class Manager(DiffusionManager[DM]):
         else:
             self.scaler = None
 
+    @override
     def _train(self, dataset: DataLoader[Any] | Dataset[Any] | Collection[Any], /, iterations: int | None = None, *args, device: torch.device = devices.CPU, use_multi_gpus: bool = False, callbacks_list: list[Callback] = [], **kwargs) -> dict[str, float]:
         self.current_batch = 0
         return super()._train(dataset, iterations, *args, device=device, use_multi_gpus=use_multi_gpus, callbacks_list=callbacks_list, **kwargs)
 
+    @override
     def convert(self) -> None:
         if not hasattr(self, 'scaler'):
             self.scaler = None
         super().convert()
 
+    @override
     def forward_diffusion(self, data: torch.Tensor, condition: Any = None, t: torch.Tensor | None = None) -> tuple[Any, Any]:
         # initialize
         t = torch.randint(1, self.time_steps + 1, (data.shape[0],), device=data.device).long() if t is None else t.to(data.device)
         return self.raw_model.forward_diffusion(data, t, condition=condition)
 
+    @override
     def optimize(self) -> None:
         if self.current_batch % self.accumulation_steps == 0:
             return super().optimize()
 
     @overload
-    def sampling_step(self, data: DiffusionData, i: int, /) -> torch.Tensor:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: Literal[False] = False) -> torch.Tensor:
         ...
 
     @overload
-    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
         ...
 
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         predicted_noise, _ = self.forward(data)
         return self.raw_model.sampling_step(data, i, predicted_obj=predicted_noise, return_noise=return_noise)
 
+    @override
     def to(self, device: torch.device) -> None:
         if device.type != 'cuda' and self.use_fp16:
             view.warnings.warn("The `GradScaler` is only available on CUDA devices. Disabling half precision.")
             self.scaler = None
         return super().to(device)
 
+    @override
     def train_step(self, x_train: torch.Tensor | Any, y_train: torch.Tensor | Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         if not self.use_fp16:
             return super().train_step(x_train, y_train, forward_diffusion=forward_diffusion)

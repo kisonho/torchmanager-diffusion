@@ -1,5 +1,6 @@
+from typing import Literal, TypeVar, overload
+from typing_extensions import override
 import abc, torch
-from typing import TypeVar, overload
 
 from .diffusion import DiffusionModule
 from .protocols import DiffusionData
@@ -27,18 +28,21 @@ class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
     def fast_sampling(self) -> bool:
         return self.fast_sampling_steps is not None
 
+    @override
     def __init__(self, model: Module, time_steps: int) -> None:
         super().__init__(model, time_steps)
         self.fast_sampling_steps = None
 
     @overload
-    @abc.abstractmethod
-    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[False] = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
         ...
 
     @overload
-    @abc.abstractmethod
-    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = True, predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[True], predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
     @abc.abstractmethod

@@ -1,3 +1,5 @@
+from typing import Literal, overload
+from typing_extensions import override
 from torchmanager import losses, metrics
 from torchmanager_core import torch, view
 from torchmanager_core.typing import Any, Generic, Module, Optional, Union, TypeVar
@@ -39,6 +41,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
         self.__epsilon = value
 
+    @override
     def __init__(self, model: Module, /, sde: SDEType, time_steps: int, beta_space: Optional[BetaSpace] = None, *, epsilon: float = 1e-5, is_continous: bool = False, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
@@ -107,6 +110,13 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
             return self._run_model(DiffusionData(x, labels, condition=x_train.condition))
         raise NotImplementedError(f"SDE class {type(self.sde)} not yet supported.")
 
+    @overload
+    def forward(self, x_train: Any, y_train: None = None) -> tuple[torch.Tensor, None]: ...
+
+    @overload
+    def forward(self, x_train: Any, y_train: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]: ...
+
+    @override
     def forward(self, x_train: DiffusionData, y_train: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         y = self._score(x_train)
 
@@ -114,6 +124,7 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         loss = self.compiled_losses(y, y_train) if self.loss_fn is not None and y_train is not None else None
         return y, loss
 
+    @override
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[Any, torch.Tensor]:
         # sampling t
         if t is not None:
@@ -137,15 +148,30 @@ class SDEManager(DiffusionManager[Module], Generic[Module, SDEType]):
         score = -z / std
         return DiffusionData(x, t, condition=condition), score
 
+    @override
     def to(self, device: torch.device) -> None:
         if self.beta_space is not None:
             self.beta_space = self.beta_space.to(device)
         return super().to(device)
 
+    @override
     def sampling(self, num_images: int, x_t: torch.Tensor, condition: Optional[torch.Tensor] = None, *, sampling_range: Optional[range] = None, show_verbose: bool = False) -> list[torch.Tensor]:
         sampling_range = range(self.time_steps) if sampling_range is None else sampling_range
         return super().sampling(num_images, x_t, condition, sampling_range=sampling_range, show_verbose=show_verbose)
 
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: Literal[False] = False) -> torch.Tensor:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # predict
         if isinstance(self.sde, VESDE):

@@ -1,8 +1,9 @@
+from typing import Literal, TypeVar, overload
+from typing_extensions import override
 import torch
 from diffusion.data import DiffusionData
 from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
 from diffusion.sde import SDEType
-from typing import TypeVar
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=torch.nn.Module | None)
@@ -31,6 +32,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     sigma_schedule: torch.Tensor
     sampling_sigma_schedule: torch.Tensor
 
+    @override
     def __init__(self, diff_model: Module, time_steps: int, *, sigma_data: float = 0.5, sigma_min: float = 0.002, sigma_max: float = 1.0, rho: float = 7.0, beta_d: float = 2.0, beta_min: float = 0.1, cov_xy: float = 0.0, guidance: float = 1.0, churn_step_ratio: float = 0.0, pred_mode: SDEType | None = SDEType.VP, encoder: E = None, decoder: D = None) -> None:
         """
         Initialize the DDBM module.
@@ -173,6 +175,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             denoised = denoised.clamp(-1, 1)
         return model_output, denoised
 
+    @override
     def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         sigma = self._gather_sigma(data.t, data.x)
         _, denoised = self._denoise(data.x, sigma, condition=data.condition if isinstance(data.condition, torch.Tensor) else None, *args, **kwargs)
@@ -202,6 +205,7 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
             return a_t * x_end + b_t * x_start + std_t * noise
         raise NotImplementedError(f"Unsupported DDBM pred_mode: {self.pred_mode}")
 
+    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
@@ -322,6 +326,19 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         x_next = x_curr + 0.5 * (d + d_next) * dt
         return x_next, denoised
 
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         if self.fast_sampling_steps is not None:
             i = len(self.fast_sampling_steps) - i
@@ -343,6 +360,19 @@ class DDBMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
         x_t_minus_one, denoised = self._step(x, sigma, sigma_next, condition)
         return (x_t_minus_one, denoised) if return_noise else x_t_minus_one
 
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[False] = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[True], predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         assert data.condition is not None, "Condition must be given for DDBM."
         condition = data.condition.to(data.x.device) if isinstance(data.condition, torch.Tensor) else data.condition

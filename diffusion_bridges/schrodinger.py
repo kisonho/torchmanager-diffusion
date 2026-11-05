@@ -1,7 +1,8 @@
+from typing import Generic, Literal, TypeVar, overload
+from typing_extensions import override
 import torch
 from diffusion.data import DiffusionData
 from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
-from typing import Generic, TypeVar
 
 Module = TypeVar('Module', bound=torch.nn.Module)
 E = TypeVar('E', bound=torch.nn.Module | None)
@@ -32,6 +33,7 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
     mu_x0: torch.Tensor
     mu_x1: torch.Tensor
 
+    @override
     def __init__(self, diff_model: Module, time_steps: int, *, beta_max: float = 0.3, ot_ode: bool = False, encoder: E = None, decoder: D = None) -> None:
         """
         Initialize the Schrodinger Bridge module.
@@ -108,10 +110,12 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
         std_fwd = self._gather_schedule(self.std_fwd, t, xt)
         return xt - std_fwd * predicted_obj
 
+    @override
     def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         data = DiffusionData(data.x, data.t)
         return super().forward(data, *args, **kwargs)
 
+    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         x_start = self.encode(data)
         assert condition is not None, "Condition is required for forward diffusion."
@@ -137,6 +141,19 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
         objective = (xt - x_start) / self._gather_schedule(self.std_fwd, t, x_start)
         return DiffusionData(xt, t, condition=condition), objective
 
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[False] = False) -> torch.Tensor:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: Literal[True]) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         if self.fast_sampling_steps is not None:
             i = len(self.fast_sampling_steps) - i
@@ -168,6 +185,19 @@ class SchrodingerBridgeModule(LatentDiffusionModule[Module, E, D], FastSamplingD
             x_t_minus_one = x_t_minus_one + noise_mask * torch.sqrt(var) * torch.randn_like(data.x)
         return (x_t_minus_one, predicted_obj) if return_noise else x_t_minus_one
 
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[False] = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: Literal[True], predicted_obj: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @overload
+    def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    @override
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         assert data.condition is not None, "Condition must be given for Schrodinger Bridge."
         predicted_obj = self.forward(data) if predicted_obj is None else predicted_obj
