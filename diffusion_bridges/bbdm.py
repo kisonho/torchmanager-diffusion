@@ -1,5 +1,4 @@
 from typing import Literal, TypeVar, overload
-from typing_extensions import override
 import torch
 from diffusion.data import DiffusionData
 from diffusion.nn import FastSamplingDiffusionModule, LatentDiffusionModule
@@ -10,12 +9,10 @@ D = TypeVar('D', bound=torch.nn.Module | None)
 
 
 class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModule[Module]):
-    @override
     def forward(self, data: DiffusionData, *args, **kwargs) -> torch.Tensor:
         data = DiffusionData(data.x, data.t)
         return super().forward(data, *args, **kwargs)
 
-    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[
         DiffusionData, torch.Tensor
     ]:
@@ -49,7 +46,6 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # fast sampling
         if self.fast_sampling:
@@ -104,7 +100,6 @@ class BBDMModule(LatentDiffusionModule[Module, E, D], FastSamplingDiffusionModul
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def fast_sampling_step(self, data: DiffusionData, tau: int, tau_minus_one: int, /, *, return_noise: bool = False, predicted_obj: torch.Tensor | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # predict noise
         objective_recon, _ = self.forward(data)

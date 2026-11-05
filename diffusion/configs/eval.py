@@ -1,5 +1,4 @@
 from typing import Any, overload
-from typing_extensions import override
 import torchmanager
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, raise_error
@@ -19,7 +18,6 @@ class EvalConfigs(_Configs):
     use_multi_gpus: bool
     use_ode: bool
 
-    @override
     def format_arguments(self) -> None:
         # format arguments
         super().format_arguments()
@@ -50,7 +48,6 @@ class EvalConfigs(_Configs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(
         parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser(),
         *,
@@ -77,12 +74,10 @@ class EvalConfigs(_Configs):
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
-    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"torchmanager={torchmanager.version}")
 
-    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Pre-trained model: {self.model}")
@@ -96,7 +91,6 @@ class DDPMEvalConfigs(EvalConfigs):
     beta_scheduler: str | None
     image_size: int
 
-    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         assert self.image_size > 0, raise_error(ValueError(f"Image size must be a positive number, got {self.image_size}."))
@@ -112,7 +106,6 @@ class DDPMEvalConfigs(EvalConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser(), **kwargs: Any) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = EvalConfigs.get_arguments(
             parser,
@@ -128,7 +121,6 @@ class DDPMEvalConfigs(EvalConfigs):
         ddpm_args.add_argument("-size", "--image_size", type=int, default=32, help="The image size to generate, default is 32.")
         return parser
 
-    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Model: {self.model}")

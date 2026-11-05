@@ -1,5 +1,4 @@
 from typing import Literal, TypeVar, overload
-from typing_extensions import override
 import abc, torch
 
 from .diffusion import DiffusionModule
@@ -28,7 +27,6 @@ class FastSamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
     def fast_sampling(self) -> bool:
         return self.fast_sampling_steps is not None
 
-    @override
     def __init__(self, model: Module, time_steps: int) -> None:
         super().__init__(model, time_steps)
         self.fast_sampling_steps = None

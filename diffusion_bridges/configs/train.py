@@ -1,5 +1,4 @@
 from typing import overload
-from typing_extensions import override
 import argparse, diffusion, os
 from diffusion.configs import TrainingConfigs
 from diffusion.sde import SDEType
@@ -10,7 +9,6 @@ from torchmanager_core import view
 class BBDMTrainingConfigs(TrainingConfigs):
     vqgan_path: str | None
 
-    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         self.vqgan_path = os.path.normpath(self.vqgan_path) if self.vqgan_path is not None else None
@@ -26,14 +24,12 @@ class BBDMTrainingConfigs(TrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = TrainingConfigs.get_arguments(parser)
         sde_bbdm_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("BBDM Arguments")
         sde_bbdm_args.add_argument("-vq", "--vqgan_path", type=str, default=None, help="The path for the VQGAN model if using latent space.")
         return parser
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"BBDM settings: vqgan_path={self.vqgan_path}")
@@ -42,7 +38,6 @@ class BBDMTrainingConfigs(TrainingConfigs):
 class ABridgeTrainingConfigs(BBDMTrainingConfigs):
     c_lambda: float
 
-    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         assert self.c_lambda > 0, "Lambda must be a positive number."
@@ -58,19 +53,16 @@ class ABridgeTrainingConfigs(BBDMTrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = BBDMTrainingConfigs.get_arguments(parser)
         sde_bbdm_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("A-Bridge Arguments")
         sde_bbdm_args.add_argument("-l", "--c_lambda", type=float, default=2, help="The lambda for the loss function, default is 2.")
         return parser
 
-    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"diffusion={diffusion.VERSION}")
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"A-Bridge settings: c_lambda={self.c_lambda}")
@@ -88,7 +80,6 @@ class DDBMTrainingConfigs(BBDMTrainingConfigs):
     churn_step_ratio: float
     pred_mode: SDEType
 
-    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         self.pred_mode = self.pred_mode if isinstance(self.pred_mode, SDEType) else SDEType[str(self.pred_mode).upper()]
@@ -113,7 +104,6 @@ class DDBMTrainingConfigs(BBDMTrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = BBDMTrainingConfigs.get_arguments(parser)
         ddbm_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("DDBM Arguments")
@@ -129,12 +119,10 @@ class DDBMTrainingConfigs(BBDMTrainingConfigs):
         ddbm_args.add_argument("--pred_mode", type=str, default="vp", choices=("ve", "vp"), help="The bridge schedule mode, default is `vp`.")
         return parser
 
-    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"diffusion={diffusion.VERSION}")
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(
@@ -149,7 +137,6 @@ class I2SBTrainingConfigs(BBDMTrainingConfigs):
     beta_max: float
     ot_ode: bool
 
-    @override
     def format_arguments(self) -> None:
         super().format_arguments()
         assert self.beta_max > 0, "Beta max must be a positive number."
@@ -165,7 +152,6 @@ class I2SBTrainingConfigs(BBDMTrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         parser = BBDMTrainingConfigs.get_arguments(parser)
         i2sb_args = parser if isinstance(parser, argparse._ArgumentGroup) else parser.add_argument_group("I2SB Arguments")
@@ -173,12 +159,10 @@ class I2SBTrainingConfigs(BBDMTrainingConfigs):
         i2sb_args.add_argument("--ot_ode", action="store_true", help="Use deterministic OT-ODE updates for I2SB.")
         return parser
 
-    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"diffusion={diffusion.VERSION}")
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"I2SB settings: beta_max={self.beta_max}, ot_ode={self.ot_ode}")

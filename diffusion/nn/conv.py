@@ -1,4 +1,3 @@
-from typing_extensions import override
 import torch
 from functools import partial
 from torch.nn import functional as F
@@ -20,7 +19,6 @@ class WeightStandardizedConv2d(torch.nn.Conv2d):
         var = reduce(self.weight, "o ... -> o 1 1 1", partial(torch.var, unbiased=False))
         return (self.weight - mean) * (var + eps).rsqrt()
 
-    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return F.conv2d(
             input,
@@ -34,7 +32,6 @@ class WeightStandardizedConv2d(torch.nn.Conv2d):
 
 
 class ConvBlock(torch.nn.Module):
-    @override
     def __init__(self, dim: int, dim_out: int, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, groups: int = 8) -> None:
         super().__init__()
         Conv2d = conv_type
@@ -42,7 +39,6 @@ class ConvBlock(torch.nn.Module):
         self.norm = torch.nn.GroupNorm(groups, dim_out)
         self.act = torch.nn.SiLU()
 
-    @override
     def forward(self, x: torch.Tensor, scale_shift: tuple[torch.Tensor, torch.Tensor] | None = None) -> torch.Tensor:
         x = self.proj(x)
         x = self.norm(x)
@@ -56,7 +52,6 @@ class ConvBlock(torch.nn.Module):
 class ConvNextBlock(torch.nn.Module):
     """https://arxiv.org/abs/2201.03545"""
 
-    @override
     def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: int | None = None, mult: int = 2, norm: bool = True) -> None:
         super().__init__()
         Conv2d = conv_type
@@ -72,7 +67,6 @@ class ConvNextBlock(torch.nn.Module):
         )
         self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else torch.nn.Identity()
 
-    @override
     def forward(self, x: torch.Tensor, time_emb: torch.Tensor | None = None) -> torch.Tensor:
         h = self.ds_conv(x)
         if self.mlp is not None and time_emb is not None:
@@ -85,12 +79,10 @@ class ConvNextBlock(torch.nn.Module):
 
 
 class Residual(torch.nn.Module, Generic[M]):
-    @override
     def __init__(self, fn: M) -> None:
         super().__init__()
         self.fn = fn
 
-    @override
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return self.fn(x, *args, **kwargs) + x
 
@@ -98,7 +90,6 @@ class Residual(torch.nn.Module, Generic[M]):
 class ResnetBlock(torch.nn.Module):
     """https://arxiv.org/abs/1512.03385"""
 
-    @override
     def __init__(self, dim: int, dim_out: int, *, conv_type: Type[torch.nn.Conv2d] = torch.nn.Conv2d, dropout: float = 0, time_emb_dim: int | None = None, groups: int = 8) -> None:
         super().__init__()
         Conv2d = conv_type
@@ -108,7 +99,6 @@ class ResnetBlock(torch.nn.Module):
         self.block2 = ConvBlock(dim_out, dim_out, conv_type=Conv2d, groups=groups)
         self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else torch.nn.Identity()
 
-    @override
     def forward(self, x: torch.Tensor, time_emb: torch.Tensor | None = None) -> torch.Tensor:
         h = self.block1(x)
         if self.mlp is not None and time_emb is not None:

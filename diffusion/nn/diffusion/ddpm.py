@@ -1,5 +1,4 @@
 from typing import Literal, TypeVar, cast, overload
-from typing_extensions import override
 import torch
 
 from .protocols import BetaSpace, DiffusionData
@@ -32,13 +31,11 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
         else:
             self.register_buffer("_betas", beta_space.betas)
 
-    @override
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, *, with_condition: bool = False) -> None:
         super().__init__(model, time_steps)
         self.beta_space = beta_space
         self.with_condition = with_condition
 
-    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor, /, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # initialize noises
         x_start = data.to(self.beta_space.device)
@@ -61,7 +58,6 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
     def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def ode_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         sqrt_alphas_cumprod_t = self.beta_space.sample_sqrt_alphas_cumprod(data.t, data.x.shape)
         sqrt_one_minus_alphas_cumprod_t = self.beta_space.sample_sqrt_one_minus_alphas_cumprod(data.t, data.x.shape)
@@ -87,7 +83,6 @@ class DDPMModule(ODESamplingDiffusionModule[Module]):
     def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def sde_sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Sampling step of diffusion model

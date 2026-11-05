@@ -1,5 +1,4 @@
 from typing import Literal, TypeVar, overload
-from typing_extensions import override
 import abc, torch
 
 from diffusion.data.diffusion import DiffusionData
@@ -31,7 +30,6 @@ class ODESamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
     def use_ode(self, use_ode: bool):
         self.__use_ode = use_ode
 
-    @override
     def __init__(self, model: Module, time_steps: int, *, use_ode: bool = False) -> None:
         super().__init__(model, time_steps)
         self.use_ode = use_ode
@@ -48,7 +46,6 @@ class ODESamplingDiffusionModule(DiffusionModule[Module], abc.ABC):
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         return self.ode_sampling_step(data, i, predicted_obj=predicted_obj, return_noise=return_noise) if self.use_ode else self.sde_sampling_step(data, i, predicted_obj=predicted_obj, return_noise=return_noise)
 

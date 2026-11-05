@@ -1,4 +1,3 @@
-from typing_extensions import override
 from torchmanager.metrics import LPIPS as _LPIPS, LPIPSNetType as LPIPSNet
 from torchmanager_core import torch
 from torchmanager_core.typing import Any, Protocol, cast
@@ -40,7 +39,6 @@ class LPIPS(_LPIPS):
     - Properties:
         - lpips: The LPIPS module to extract features
     """
-    @override
     def __init__(self, net: LPIPSNet = LPIPSNet.ALEX, target: str | None = None) -> None:
         """
         Constructor
@@ -69,7 +67,6 @@ class LPIPS(_LPIPS):
         feature_extractor = cast(_FeatureExtractor, feature_extractor)
         super().__init__(feature_extractor=feature_extractor.features, net_type=net, lin_layers=lin_layers, target=target)
 
-    @override
     def forward_features(self, x: torch.Tensor) -> Any:
         # check channels
         c = x.shape[1]

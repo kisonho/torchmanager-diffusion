@@ -1,5 +1,4 @@
 from typing import Generic, Literal, TypeVar, overload
-from typing_extensions import override
 import torch, warnings
 
 from .diffusion import DiffusionModule
@@ -38,7 +37,6 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
         assert value > 0 and value < 1, "The precision epsilon must be in range of (0, 1)."
         self.__epsilon = value
 
-    @override
     def __init__(self, model: Module, sde: SDEType, time_steps: int, *, beta_space: BetaSpace | None = None, epsilon: float = 1e-5, is_continous: bool = False) -> None:
         """
         Constructor
@@ -100,11 +98,9 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             return super().forward(DiffusionData(x, labels, condition=data.condition))
         raise NotImplementedError(f"SDE class {type(self.sde)} not yet supported.")
 
-    @override
     def forward(self, data: DiffusionData) -> torch.Tensor:
         return self._score(data)
 
-    @override
     def forward_diffusion(self, data: torch.Tensor, t: torch.Tensor | None = None, condition: torch.Tensor | None = None, *, noise: torch.Tensor | None = None) -> tuple[DiffusionData, torch.Tensor]:
         # sampling t
         if t is not None:
@@ -140,7 +136,6 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def sampling_step(self, data: DiffusionData, i: int, /, *, predicted_obj: torch.Tensor | None = None, return_noise: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # predict
         if isinstance(self.sde, VESDE):
@@ -179,7 +174,6 @@ class SDEModule(DiffusionModule[Module], Generic[Module, SDEType]):
             predicted_score = score
         return (y, predicted_score) if return_noise else y
 
-    @override
     def to(self, *args, **kwargs) -> "SDEModule[Module, SDEType]":
         super().to(*args, **kwargs)
         if self.beta_space is not None:

@@ -1,4 +1,3 @@
-from typing_extensions import override
 import contextlib, math, numpy as np, torch
 from einops import repeat
 from torch import nn
@@ -106,7 +105,6 @@ def checkpoint(func, inputs, params, flag):
 
 class CheckpointFunction(torch.autograd.Function):
     @staticmethod
-    @override
     def forward(ctx, run_function, length, *args):
         ctx.run_function = run_function
         ctx.input_tensors = list(args[:length])
@@ -120,7 +118,6 @@ class CheckpointFunction(torch.autograd.Function):
         return output_tensors
 
     @staticmethod
-    @override
     def backward(ctx, *output_grads):
         ctx.input_tensors = [x.detach().requires_grad_(True) for x in ctx.input_tensors]
         low_precision_cuda_inputs = [
@@ -229,13 +226,11 @@ def normalization(channels):
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
-    @override
     def forward(self, x):
         return x * torch.sigmoid(x)
 
 
 class GroupNorm32(nn.GroupNorm):
-    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return super().forward(input.float()).type(input.dtype)
 

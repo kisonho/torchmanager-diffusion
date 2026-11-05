@@ -1,5 +1,4 @@
 from typing import overload
-from typing_extensions import override
 from torchmanager.configs import Configs as _Configs
 from torchmanager_core import argparse, os, torch, view, raise_error, VERSION as tm_version
 
@@ -22,7 +21,6 @@ class TrainingConfigs(_Configs):
     def default_device(self) -> torch.device | None:
         return None if self.devices is None else self.devices[0]
 
-    @override
     def format_arguments(self) -> None:
         # format arguments
         super().format_arguments()
@@ -58,7 +56,6 @@ class TrainingConfigs(_Configs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser.add_argument("data_dir", type=str, help="The dataset directory.")
@@ -79,12 +76,10 @@ class TrainingConfigs(_Configs):
         device_args.add_argument("--use_multi_gpus", action="store_true", default=False, help="A flag to use multiple GPUs during training.")
         return parser
 
-    @override
     def show_environments(self, description: str = DESCRIPTION) -> None:
         super().show_environments(description)
         view.logger.info(f"torchmanager={tm_version}")
 
-    @override
     def show_settings(self) -> None:
         view.logger.info(f"Data directory: {self.data_dir}")
         view.logger.info(f"Output model: {self.output_model}")
@@ -100,7 +95,6 @@ class DDPMTrainingConfigs(TrainingConfigs):
     beta_range: list[float] | None
     beta_scheduler: BetaScheduler
 
-    @override
     def format_arguments(self) -> None:
         # format arguments
         self.beta_scheduler = BetaScheduler(self.beta_scheduler)
@@ -124,7 +118,6 @@ class DDPMTrainingConfigs(TrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = TrainingConfigs.get_arguments(parser)
@@ -135,7 +128,6 @@ class DDPMTrainingConfigs(TrainingConfigs):
         diffusion_args.add_argument("--beta_range", type=float, default=None, nargs=2, help="The range of mid-linear scheduler, default is `None`.")
         return parser
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"DDPM settings: beta_scheduler={self.beta_scheduler}, beta_range={self.beta_range}")
@@ -145,7 +137,6 @@ class SDETrainingConfigs(TrainingConfigs):
     """Training Configurations for SDE."""
     sde_type: SDEType
 
-    @override
     def format_arguments(self) -> None:
         self.sde_type = self.sde_type if isinstance(self.sde_type, SDEType) else SDEType[str(self.sde_type).upper()]
         super().format_arguments()
@@ -161,7 +152,6 @@ class SDETrainingConfigs(TrainingConfigs):
         ...
 
     @staticmethod
-    @override
     def get_arguments(parser: argparse.ArgumentParser | argparse._ArgumentGroup = argparse.ArgumentParser()) -> argparse.ArgumentParser | argparse._ArgumentGroup:
         # experiment arguments
         parser = TrainingConfigs.get_arguments(parser)
@@ -171,7 +161,6 @@ class SDETrainingConfigs(TrainingConfigs):
         diffusion_args.add_argument("-sde", "--sde_type", type=str, default="VE", help="The type of SDE, default is 'VE'.")
         return parser
 
-    @override
     def show_settings(self) -> None:
         super().show_settings()
         view.logger.info(f"SDE settings: sde_type={self.sde_type.name}")

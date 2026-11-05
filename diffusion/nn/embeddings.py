@@ -1,14 +1,11 @@
-from typing_extensions import override
 import math, torch
 
 
 class SinusoidalPositionEmbeddings(torch.nn.Module):
-    @override
     def __init__(self, dim: int):
         super().__init__()
         self.dim = dim
 
-    @override
     def forward(self, time: torch.Tensor):
         device = time.device
         half_dim = self.dim // 2

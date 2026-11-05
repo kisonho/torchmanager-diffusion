@@ -1,4 +1,3 @@
-from typing_extensions import override
 from torch.utils.data import DataLoader
 from torchmanager.data import Dataset
 from torchmanager import losses, metrics
@@ -23,7 +22,6 @@ class LDMManager(DiffusionManager[Module]):
     """
     model: Module | torch.nn.DataParallel[Module]
 
-    @override
     def __init__(self, model: Module, time_steps: int, *, optimizer: torch.optim.Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
@@ -79,7 +77,6 @@ class LDMManager(DiffusionManager[Module]):
         x_0 = x_t
         return [img for img in x_0]
 
-    @override
     def sampling(self, num_images: int, x_t: torch.Tensor, /, *, condition: torch.Tensor | None = None, fast_sampling: bool = False, sampling_range: Sequence[int] | range | None = None, show_verbose: bool = False) -> list[torch.Tensor]:
         '''
         Samples a given number of images
@@ -113,7 +110,6 @@ class LDMManager(DiffusionManager[Module]):
         x_0 = self.model(z_0, mode=LatentMode.DECODE)
         return [img for img in x_0]
 
-    @override
     def data_parallel(self, target_devices: list[torch.device], *, parallel_type: type[torch.nn.DataParallel] = torch.nn.DataParallel) -> bool:
         # data parallel encoder
         if self.decoder is not None:
@@ -131,11 +127,9 @@ class LDMManager(DiffusionManager[Module]):
         use_multi_gpus = decoder_use_multi_gpus and encoder_use_multi_gpus
         return super().data_parallel(target_devices, parallel_type=parallel_type) and use_multi_gpus
 
-    @override
     def predict(self, num_images: int, image_size: Union[int, tuple[int, ...]], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, fast_sampling: bool = False, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         return super().predict(num_images, image_size, *args, condition=condition, noises=noises, fast_sampling=fast_sampling, sampling_range=sampling_range, device=device, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
 
-    @override
     def reset(self, cpu: torch.device = devices.CPU) -> None:
         if isinstance(self.encoder, torch.nn.DataParallel):
             self.encoder = self.encoder.module.to(cpu)  # type: ignore
@@ -143,7 +137,6 @@ class LDMManager(DiffusionManager[Module]):
             self.decoder = self.decoder.module.to(cpu)  # type: ignore
         return super().reset(cpu)
 
-    @override
     def train_step(self, x_train: torch.Tensor, y_train: torch.Tensor, *, forward_diffusion: bool = True) -> dict[str, float]:
         # enter latent space
         z_x = self.model(x_train, mode=LatentMode.ENCODE)
@@ -152,7 +145,6 @@ class LDMManager(DiffusionManager[Module]):
         # forward diffusion model
         return super().train_step(z_x, z_y, forward_diffusion=forward_diffusion)
 
-    @override
     def test(self, dataset: Union[DataLoader[torch.Tensor], Dataset[torch.Tensor]], *args: Any, sampling_images: bool = False, fast_sampling: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         """
         Test target model
@@ -173,7 +165,6 @@ class LDMManager(DiffusionManager[Module]):
         """
         return super().test(dataset, *args, sampling_images=sampling_images, sampling_shape=sampling_shape, fast_sampling=fast_sampling, sampling_range=sampling_range, device=device, empty_cache=empty_cache, use_multi_gpus=use_multi_gpus, show_verbose=show_verbose, **kwargs)
 
-    @override
     def test_step(self, x_test: torch.Tensor, y_test: torch.Tensor, *, forward_diffusion: bool = True) -> dict[str, float]:
         # enter latent space
         z_x = self.model(x_test, mode=LatentMode.ENCODE)
@@ -182,7 +173,6 @@ class LDMManager(DiffusionManager[Module]):
         # forward diffusion model
         return super().test_step(z_x, z_y, forward_diffusion=forward_diffusion)
 
-    @override
     def to(self, device: torch.device) -> None:
         if self.encoder is not None:
             self.encoder = self.encoder.to(device)

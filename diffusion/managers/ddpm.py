@@ -1,5 +1,4 @@
 from typing import Literal, overload
-from typing_extensions import override
 from torchmanager import losses, metrics
 from torchmanager_core import torch, view
 from torchmanager_core.typing import Module, Optional, Union
@@ -17,13 +16,11 @@ class DDPMManager(DiffusionManager[Module]):
     """
     beta_space: BetaSpace
 
-    @override
     def __init__(self, model: Module, beta_space: BetaSpace, time_steps: int, optimizer: Optional[torch.optim.Optimizer] = None, loss_fn: Optional[Union[losses.Loss, dict[str, losses.Loss]]] = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         super().__init__(model, time_steps, optimizer, loss_fn, metrics)
         self.beta_space = beta_space
         view.warnings.warn("The `DDPMManager` is deprecated, use `nn.DDPM` instead.", DeprecationWarning)
 
-    @override
     def forward_diffusion(self, data: torch.Tensor, condition: Optional[torch.Tensor] = None, t: Optional[torch.Tensor] = None) -> tuple[DiffusionData, torch.Tensor]:
         """
         Forward pass of diffusion model, sample noises
@@ -46,7 +43,6 @@ class DDPMManager(DiffusionManager[Module]):
         x = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
         return DiffusionData(x, t, condition=condition), noise
 
-    @override
     def to(self, device: torch.device) -> None:
         self.beta_space = self.beta_space.to(device)
         return super().to(device)
@@ -63,7 +59,6 @@ class DDPMManager(DiffusionManager[Module]):
     def sampling_step(self, data: DiffusionData, i: int, /, *, return_noise: bool) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    @override
     def sampling_step(self, data: DiffusionData, i, /, *, return_noise: bool = False) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         # initialize betas by given t
         betas_t = self.beta_space.sample_betas(data.t, data.x.shape)

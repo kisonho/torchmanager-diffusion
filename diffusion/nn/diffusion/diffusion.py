@@ -1,5 +1,4 @@
 from typing import Any, Generic, Literal, TypeVar, overload
-from typing_extensions import override
 import abc, torch
 
 from .protocols import DiffusionData
@@ -18,7 +17,6 @@ class TimedModule(torch.nn.Module, abc.ABC):
         - unpack_data: The method that accepts inputs perform to `DiffusionData` to unpack the given inputs and passed to `forward` method
     """
 
-    @override
     def __call__(self, x_in: DiffusionData, *args: Any, **kwargs: Any) -> Any:
         data = self.unpack_data(x_in)
         return super().__call__(*data, *args, **kwargs)
@@ -67,7 +65,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
             raise ValueError("Expected `time_steps` to be greater than 0")
         self.__time_steps = value
 
-    @override
     def __init__(self, model: Module, time_steps: int) -> None:
         """
         Initialize the diffusion model
@@ -80,7 +77,6 @@ class DiffusionModule(torch.nn.Module, Generic[Module], abc.ABC):
         self.model = model
         self.time_steps = time_steps
 
-    @override
     def forward(self, data: DiffusionData, /, *args, **kwargs) -> torch.Tensor:
         # check model type
         if isinstance(self.model, TimedModule):  # wrapped `TimedModule` model

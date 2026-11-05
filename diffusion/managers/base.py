@@ -1,5 +1,4 @@
 from typing import Literal, overload
-from typing_extensions import override
 from torch.nn.utils import clip_grad
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -34,7 +33,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         # Preserve the storage key used by existing manager checkpoints.
         vars(self)["time_steps"] = time_steps
 
-    @override
     def __init__(self, model: Module, time_steps: int, optimizer: Optimizer | None = None, loss_fn: losses.Loss | dict[str, losses.Loss] | None = None, metrics: dict[str, metrics.Metric] = {}) -> None:
         """
         Constructor
@@ -50,7 +48,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         super().__init__(model, optimizer, loss_fn, metrics)
         self.time_steps = time_steps
 
-    @override
     def backward(self, loss: torch.Tensor, /, inputs: Sequence[torch.Tensor] | None = None) -> None:
         super().backward(loss, inputs=inputs)
         clip_grad.clip_grad_norm_(self.model.parameters(), max_norm=1)
@@ -69,7 +66,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
         return NotImplemented
 
     @torch.no_grad()
-    @override
     def predict(self, num_images: int, image_size: int | tuple[int, ...], *args: Any, condition: torch.Tensor | None = None, noises: torch.Tensor | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> list[torch.Tensor]:
         # find available device
         cpu, device, target_devices = devices.search(device)
@@ -173,7 +169,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             progress_bar.close()
 
     @torch.no_grad()
-    @override
     def test(self, dataset: DataLoader[torch.Tensor] | Dataset[torch.Tensor], *args: Any, sampling_images: bool = False, sampling_shape: int | tuple[int, ...] | None = None, sampling_range: Sequence[int] | range | None = None, device: torch.device | list[torch.device] | None = None, empty_cache: bool = True, use_multi_gpus: bool = False, show_verbose: bool = False, **kwargs: Any) -> dict[str, float]:
         """
         Test target model
@@ -271,7 +266,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
                 self.loss_fn = self.raw_loss_fn if self.raw_loss_fn is not None else self.raw_loss_fn
                 devices.empty_cache()
 
-    @override
     def train_step(self, x_train: Any, y_train: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion and isinstance(x_train, torch.Tensor) and isinstance(y_train, DeviceMovable):
@@ -282,7 +276,6 @@ class DiffusionManager(_Manager[Module], abc.ABC):
             x_train_noise, objective = x_train, y_train
         return super().train_step(x_train_noise, objective)
 
-    @override
     def test_step(self, x_test: Any, y_test: Any, *, forward_diffusion: bool = True) -> dict[str, float]:
         # forward diffusion sampling
         if forward_diffusion and isinstance(x_test, torch.Tensor) and isinstance(y_test, DeviceMovable):
